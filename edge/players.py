@@ -48,6 +48,24 @@ USE_ROLE = True
 ROLE_LEAGUES = {"nfl", "nhl"}
 
 
+# player-specific spread: boom-or-bust players get wider odds than steady ones. Backtested on the latest 30% of
+# lines: helps the NBA, not the NHL or MLB.
+PLAYER_ALPHA = {"nba"}
+ALPHA_K = 30.0  # games of weight on the league-wide spread
+
+
+def player_alpha(d: pd.DataFrame, mu_hist: pd.Series) -> pd.Series:
+    """Each player's past overdispersion around the projection, using only earlier games, shrunk to the stat's."""
+    if d.attrs.get("league") not in PLAYER_ALPHA:
+        return d["alpha"]
+    r2 = ((d["y"] - mu_hist) ** 2 - mu_hist) / mu_hist ** 2
+    tmp = pd.DataFrame({"pid": d["player_id"], "r2": r2, "date": d["date"]}).sort_values("date", kind="stable")
+    g = tmp.groupby("pid", sort=False)["r2"]
+    s_ = g.transform(lambda x: x.shift(1).fillna(0).cumsum()).reindex(d.index)
+    n_ = g.transform(lambda x: x.shift(1).notna().cumsum()).reindex(d.index)
+    return ((s_ + ALPHA_K * d["alpha"]) / (n_ + ALPHA_K)).clip(0.002, 3.0)
+
+
 def _role_cols(d):
     return ROLE_FEATURES if USE_ROLE and d.attrs.get("league") in ROLE_LEAGUES else []
 
@@ -368,6 +386,7 @@ def fit_predict(d: pd.DataFrame, min_train: int = 800) -> tuple[pd.DataFrame, di
         d.loc[target, "mu_nomatch"] = np.exp(design(t, base_cols) @ b_nom + o)
         d.loc[target, "alpha"] = alpha
         last = {"beta": dict(zip(["const", *match_cols], b_full.round(4).tolist())), "alpha": alpha, "n_train": len(tr)}
+    d["alpha"] = player_alpha(d, d["mu"])
     return d, last
 
 
@@ -426,4 +445,8 @@ def fit_live(d: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     d["mu"] = np.nan
     d.loc[fut, "mu"] = np.exp(design(t, cols) @ beta + t["log_base"].to_numpy())
     d["alpha"] = alpha
+    hist = usable & d["y"].notna()
+    mu_hist = pd.Series(np.nan, index=d.index)
+    mu_hist[hist] = np.exp(design(d[hist], cols) @ beta + d.loc[hist, "log_base"].to_numpy())
+    d["alpha"] = player_alpha(d, mu_hist)
     return d, {"beta": dict(zip(["const", *cols], beta.round(4).tolist())), "alpha": alpha}
