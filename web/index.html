@@ -314,6 +314,12 @@ footer.site{max-width:1360px;margin:0 auto;padding:28px 24px 100px;border-top:1p
 .dk{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px} .dk span{color:var(--muted)} .dk b{text-align:right} .dk small{color:var(--muted);font-weight:500}
 @media (max-width:1100px){.detail{grid-template-columns:1fr 1fr}.detail .dcol:first-child{grid-column:1/-1}}
 @media (max-width:760px){.detail{grid-area:det;grid-template-columns:1fr}.prow.open{grid-template-areas:"pc oc" "prop hc" "det det"}.dhits{grid-template-columns:repeat(3,1fr)}}
+.cdet .detail{grid-template-columns:1fr;padding:14px 0 0;border-top:1px solid var(--line)}
+.cdet .detail .dcol:first-child{grid-column:auto}
+tr.xrow{cursor:pointer} tr.xrow:hover td,tr.xrow.on td{background:var(--panel2)} tr.xrow.on td{border-bottom:0}
+tr.xdet td{background:var(--panel2);white-space:normal;padding:4px 20px 18px}
+tr.xdet .detail{margin-top:0}
+.cards{align-items:start}
 </style>
 </head>
 <body>
@@ -415,8 +421,8 @@ function pickCard(x){
    </div>
    <div class="pfoot">${x.score!=null&&x.proven!==false?meter(x.score):x.proven===false?'<span class="tag gray">Unproven</span>':""}
     <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(w.pro[1]||w.pro[0]||"")}</span>
-    <button class="chip" data-open="${esc(id)}" style="padding:4px 10px;font-size:12px">${open.has(id)?"Hide":"Why"}</button></div>
-   <div class="why-wrap"><ul class="whylist">${w.pro.map(t=>`<li>${esc(t)}</li>`).join("")}${w.con.map(t=>`<li class="c">${esc(t)}</li>`).join("")}</ul></div>
+    <button class="chip" data-open="${esc(id)}" style="padding:4px 10px;font-size:12px">${open.has(id)?"Hide":"Why & stats"}</button></div>
+   ${open.has(id)?`<div class="cdet">${pickDetail(x)}</div>`:""}
   </div>`}
 
 /* ===== pages ===== */
@@ -471,13 +477,13 @@ function pageProps(){
    <button class="chip ${F.ev?"on":""}" data-set="ev:${F.ev?"":"1"}">+EV only</button></div>
   <div class="panel tbl"><table><thead><tr>${th("player","Player")}<th>Pick</th>${th("proj","Proj","r")}${th("p","Chance","r")}<th class="r">Odds</th>${th("ev","EV","r")}
    ${th("l5","L5","r")}${th("l10","L10","r")}${th("l20","L20","r")}${th("vo","H2H","r")}${th("szn","Szn","r")}${th("def","Def rk","r")}</tr></thead><tbody>
-  ${r.slice(0,250).map(x=>`<tr class="go" data-go="#/player/${pk(x.player_id,x.game_id)}"><td><div class="pcell">${headshot(x.league,x.player_id,x.player,x.team_id)}
-     <div><b>${esc(x.player)}</b>${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}<div class="note">${esc(x.pos)} · ${esc(abbr(x.league,x.team_id,x.team))} vs ${esc(abbr(x.league,x.opp_id,x.opp))}</div></div></div></td>
+  ${r.slice(0,250).map(x=>{x.why=whyFor(x);const id=legKey(x);return `<tr class="xrow ${open.has(id)?"on":""}" data-tg="${esc(id)}" title="Click for why and stats"><td><div class="pcell">${headshot(x.league,x.player_id,x.player,x.team_id)}
+     <div><a href="#/player/${pk(x.player_id,x.game_id)}"><b>${esc(x.player)}</b></a>${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}<div class="note">${esc(x.pos)} · ${esc(abbr(x.league,x.team_id,x.team))} vs ${esc(abbr(x.league,x.opp_id,x.opp))}</div></div></div></td>
    <td><span class="side ${x.side}" style="font-weight:800;font-size:11px;border-radius:5px;padding:2px 6px">${x.side==="over"?"O":"U"}</span> <b>${x.line}</b> <span class="muted">${esc(x.label)}</span></td>
    <td class="r"><b>${x.proj}</b></td><td class="r"><b style="color:${confColor(x.p)}">${pct(x.p)}</b></td>
    <td class="r"><button class="odds add ${inSlip(x)?"on":""}" style="display:inline-flex;min-width:54px;padding:4px 8px;font-size:13px" data-add='${esc(JSON.stringify(slim(x)))}'>${odds(x.price)}</button></td>
    <td class="r">${evtxt(x.ev)}</td><td class="r">${heat(x.l5)}</td><td class="r">${heat(x.l10)}</td><td class="r">${heat(x.l20)}</td><td class="r">${x.von?heat(x.vo,x.von):'<span class="muted">–</span>'}</td><td class="r">${heat(x.szn)}</td>
-   <td class="r muted">${x.def?`${x.def}/${x.defn}`:"–"}</td></tr>`).join("")}
+   <td class="r muted">${x.def?`${x.def}/${x.defn}`:"–"}</td></tr>${open.has(id)?`<tr class="xdet"><td colspan="12">${pickDetail(x)}</td></tr>`:""}`}).join("")}
   </tbody></table></div>${r.length>250?`<p class="note" style="margin-top:10px">Showing the top 250 of ${r.length}. Use the filters to narrow it down.</p>`:""}`}
 
 function parlayCard(pl){
@@ -710,7 +716,13 @@ function pickRow(x,compact){
    <div class="r xcol"><b>${hn!=null?`${hn}/${h.n}`:"–"}</b><div class="pmeta">last 10</div></div>`}
    <div class="r oc">${addBtn(x)}<span class="chev" aria-hidden="true">›</span></div>
    ${isOpen?pickDetail(x):""}</div>`}
+let _why=null,_whyD=null;
+function whyFor(x){
+  if(_whyD!==D){_whyD=D;_why=new Map();const B=D.boards||{};
+    for(const k of ["likely","value","sheet","overs","unders","leans"])for(const y of B[k]||[])if(y.why)_why.set([y.game_id,y.player_id,y.stat,y.side].join("|"),y.why)}
+  return _why.get([x.game_id,x.player_id,x.stat,x.side].join("|"))||null}
 function pickDetail(x){
+  x.why=x.why||whyFor(x);
   const p=_P.get(pk(x.player_id,x.game_id)), s=p?.stats?.[x.stat]; if(!s)return `<div class="detail"><div class="note">No stats for this play.</div></div>`;
   const over=x.side==="over", L=x.line, w=x.why||{pro:[],con:[]};
   const log=(s.log||[]).slice(-10), mx=Math.max(1,...log.map(e=>e[2]),L)*1.12;
@@ -905,7 +917,7 @@ document.addEventListener("click",e=>{
   if(c("[data-add]")){e.preventDefault();e.stopPropagation();const l=JSON.parse(c("[data-add]").dataset.add);const i=slip.findIndex(x=>x.key===l.key);
     if(i>=0)slip.splice(i,1);else{slip=slip.filter(x=>!(x.player_id===l.player_id&&x.stat===l.stat&&x.game_id===l.game_id));slip.push(l)}saveSlip();render();return}
   if(c("[data-parlay]")){slip=JSON.parse(c("[data-parlay]").dataset.parlay);saveSlip();renderSlip(true);render();return}
-  if(c(".prow[data-tg]")&&!c("a,button,input,select,.detail")){const id=c(".prow[data-tg]").dataset.tg;open.has(id)?open.delete(id):open.add(id);render();return}
+  if(c("[data-tg]")&&!c("a,button,input,select,.detail")){const id=c("[data-tg]").dataset.tg;open.has(id)?open.delete(id):open.add(id);render();return}
   if(c("[data-open]")){const id=c("[data-open]").dataset.open;open.has(id)?open.delete(id):open.add(id);render();return}
   if(c("[data-set]")){const [k,v]=c("[data-set]").dataset.set.split(":");F[k]=v;render();return}
   if(c("th[data-s]")){const [pg,k]=c("th[data-s]").dataset.s.split(":");sort[pg]=sort[pg]==="-"+k?k:"-"+k;render();return}
