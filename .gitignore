@@ -1,0 +1,13 @@
+.venv/
+.env
+.claude/
+__pycache__/
+*.pyc
+*.tmp
+*.log
+data/*
+!data/calibration.json
+!data/backtest.json
+web/slate.json
+web/stats.json
+.DS_Store

@@ -1,0 +1,76 @@
+name: Update board
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # nightly database backup to the "db" release
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-board
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      PYTHONWARNINGS: ignore
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # the database (history + pick record) lives in the Actions cache between runs
+      - name: Restore database
+        id: dbcache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/edge.db
+          key: edge-db-${{ github.run_id }}
+          restore-keys: edge-db-
+
+      - name: Fall back to the release backup
+        if: steps.dbcache.outputs.cache-matched-key == ''
+        run: |
+          mkdir -p data
+          gh release download db -p edge.db.gz -D data --clobber
+          gunzip -f data/edge.db.gz
+
+      - name: Run the model
+        run: python -u -m edge.ci
+
+      - name: Save database
+        if: always() && hashFiles('data/edge.db') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/edge.db
+          key: edge-db-${{ github.run_id }}
+
+      - name: Nightly backup (and on every manual run)
+        run: |
+          if [ "$(date -u +%H)" = "10" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            gzip -c data/edge.db > edge.db.gz
+            gh release upload db edge.db.gz --clobber
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4
