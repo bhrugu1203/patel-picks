@@ -19,6 +19,7 @@ from .ingest import ROOT
 
 warnings.filterwarnings("ignore")
 ET = ZoneInfo("America/New_York")
+PER_SIDE = 30  # plays per direction per league on the overs/unders lists
 LOOKAHEAD = {"nfl": 7, "nba": 2, "nhl": 2, "mlb": 2}
 SKIP_STATUS = {"out", "injured reserve", "suspension", "doubtful", "ir", "inactive", "not with team"}
 RECENT_GAMES = {"nfl": 4, "nba": 10, "nhl": 10, "mlb": 10}
@@ -514,6 +515,7 @@ def boards(priced: list[dict], top: int = 25) -> dict:
         per_player.add(v["player_id"])
         per_game[v["game_id"]] = per_game.get(v["game_id"], 0) + 1
         sheet.append(v)
+    all_sides = list(likely)
     likely = [x for x in likely if x["ev"] is None or x["ev"] > -0.03]
     likely.sort(key=lambda x: -x["p"])
     seen, lk = set(), []
@@ -525,25 +527,35 @@ def boards(priced: list[dict], top: int = 25) -> dict:
     games = [dict(league=lg["league"], home=g["home"], away=g["away"], **m)
              for lg in priced for g in lg["games"] for m in g["markets"] if m["ev"] > 0]
     games.sort(key=lambda m: -m["ev"])
-    # best plays in each direction: priced, at least a coin flip, and not giving away much value
-    def side_list(side):
-        c = [x for x in likely if x["side"] == side and x["price"] is not None and x["p"] >= 0.5
-             and x["ev"] is not None and x["ev"] > -0.02]
-        c.sort(key=lambda x: -(x["ev"] + 0.5 * (x["p"] - 0.5)))
+    # best plays in each direction, balanced: every league shows the same number of overs and unders
+    def _top(cands, k):
+        cands = sorted(cands, key=lambda x: -((x["ev"] if x["ev"] is not None else 0) + 0.5 * (x["p"] - 0.5)))
         seen_, out_ = set(), []
-        for x in c:
+        for x in cands:
             if x["player_id"] not in seen_:
                 seen_.add(x["player_id"])
                 out_.append(dict(x))
-        return out_[:40]
-    overs, unders = side_list("over"), side_list("under")
+        return out_[:k]
+    overs, unders = [], []
+    for lgname in {x["league"] for x in all_sides}:
+        pool = [x for x in all_sides if x["league"] == lgname and x["price"] is not None and x["p"] >= 0.5]
+        o = _top([x for x in pool if x["side"] == "over"], PER_SIDE)
+        u = _top([x for x in pool if x["side"] == "under"], PER_SIDE)
+        k = min(len(o), len(u))
+        overs += o[:k]
+        unders += u[:k]
+    rank = lambda x: -((x["ev"] or 0) + 0.5 * (x["p"] - 0.5))
+    overs.sort(key=rank)
+    unders.sort(key=rank)
     leans.sort(key=lambda x: -x["p"])
-    seen, ln = set(), []
+    seen, lo, lu = set(), [], []
     for x in leans:  # one lean per player
         if x["player_id"] not in seen:
             seen.add(x["player_id"])
-            ln.append(x)
-    sheet, value, lk, ln = sheet[:top], value[:150], lk[:150], ln[:60]
+            (lo if x["side"] == "over" else lu).append(x)
+    k = min(len(lo), len(lu), PER_SIDE)
+    ln = sorted(lo[:k] + lu[:k], key=lambda x: -x["p"])
+    sheet, value, lk = sheet[:top], value[:150], lk[:150]
     for x in sheet + value + lk + ln + overs + unders:
         explain(x)
     return {"sheet": sheet, "value": value, "likely": lk, "leans": ln, "overs": overs, "unders": unders, "game_edges": games[:40],
