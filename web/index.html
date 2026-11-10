@@ -752,14 +752,15 @@ function allPicks(){
 function sortPicks(r,how){const f={value:gScore,hit:x=>x.p,edge:edgeOf}[how||"value"];return [...r].sort((a,b)=>f(b)-f(a))}
 function gradeBadge(x){const g=grade(x);return `<span class="grade g${g.replace("+","p")}" title="Model grade: value against the price and hit chance">${g}</span>`}
 function hitBar(p){return `<div class="hitc"><b style="color:${confColor(p)}">${pct(p)}</b><div class="bar"><i style="width:${Math.round(p*100)}%;background:${p>=.6?"var(--good)":p>=.55?"var(--accent2)":"var(--ink2)"}"></i></div></div>`}
-/* recent and season averages both well past the projection, against the pick: the role may have changed */
+/* recent and season averages both well past the projection, against the pick: the model is fading a streak.
+   Backtested, the model's side won 64% of these NBA lines; leaning toward the averages lost accuracy. */
 function roleFlag(x){const s=_P.get(pk(x.player_id,x.game_id))?.stats?.[x.stat];
   if(!s||s.proj==null||s.season==null||s.l10==null||s.proj<=0)return null;
   const hi=s.season>s.proj*1.25&&s.l10>s.proj*1.25, lo=s.season<s.proj*.75&&s.l10<s.proj*.75;
-  if(hi&&x.side==="under")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well above the ${s.proj} projection. A bigger role may not be priced in yet.`;
-  if(lo&&x.side==="over")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well below the ${s.proj} projection. A smaller role may not be priced in yet.`;
+  if(hi&&x.side==="under")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well above the ${s.proj} projection. The model expects this to cool off; in past seasons its side won about 64% of spots like this. If his role truly changed (a starter out, new lineup), think twice.`;
+  if(lo&&x.side==="over")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well below the ${s.proj} projection. The model expects a bounce back; in past seasons its side won about 64% of spots like this. If his role truly changed (fewer minutes, new lineup), think twice.`;
   return null}
-const roleTag=x=>roleFlag(x)?` <span class="tag q" title="${esc(roleFlag(x))}">Role change</span>`:"";
+const roleTag=x=>roleFlag(x)?` <span class="tag q" title="${esc(roleFlag(x))}">Streak fade</span>`:"";
 function lineMove(x){const o=(_P.get(pk(x.player_id,x.game_id))?.stats?.[x.stat]?.offers||[]).find(o=>o.book===x.book&&o.line===x.line);
   return o&&o.open_line!=null&&o.open_line!==o.line?`<span class="mv" title="Line moved since it opened">opened ${o.open_line}</span>`:""}
 function pickRow(x,compact){
@@ -796,7 +797,7 @@ function pickDetail(x){
    <div class="dcol">
     <div class="dt">Why ${over?"the over":"the under"}</div>
     <ul class="whylist">${w.pro.map(t=>`<li>${esc(t)}</li>`).join("")}${w.con.map(t=>`<li class="c">${esc(t)}</li>`).join("")}${!w.pro.length&&!w.con.length?`<li>Model projects ${s.proj}, ${Math.abs(diff).toFixed(1)} ${diff>0?"above":"below"} the line</li>`:""}</ul>
-    ${roleFlag(x)?`<p class="note warnline" style="margin:12px 0 0"><b>Role change:</b> ${esc(roleFlag(x))}</p>`:""}
+    ${roleFlag(x)?`<p class="note warnline" style="margin:12px 0 0"><b>Streak fade:</b> ${esc(roleFlag(x))}</p>`:""}
     ${x.ev!=null&&x.ev<0?`<p class="note" style="margin:12px 0 0">Heads up: the model favors this side, but the price is steeper than its ${pct(x.p)} chance justifies (value ${evtxt(x.ev)}).</p>`:""}
    </div>
    <div class="dcol">

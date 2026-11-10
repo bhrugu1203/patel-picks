@@ -35,6 +35,18 @@ SP_STYLE = {"sp_k": ("p_k", "bf"), "sp_bb": ("p_bb", "bf"), "sp_hr": ("p_hr", "b
 ROTATION_Q = 0.4
 MATCHUP_FEATURES = ["opp_factor", "h2h", "key_h2h"]
 NON_MATCHUP = ["log_base", "is_home", "b2b", "env_total", "env_fav", "env_fav2", "vacated"]
+# role changes: how far the last 10 and this season sit from the base projection. The fit learns how much
+# of that gap is real (a new role) versus noise, so projections follow a player as his season changes.
+ROLE_FEATURES = ["form_l10", "form_season"]
+USE_ROLE = True
+# backtested on past seasons: the learned weights help NFL and NHL. In the NBA they made projections slightly
+# worse, and blending straight toward season/last-10 averages was clearly worse (63.8% -> 56.7% vs the line on
+# those plays), so NBA projections keep regressing hot and cold stretches.
+ROLE_LEAGUES = {"nfl", "nhl"}
+
+
+def _role_cols(d):
+    return ROLE_FEATURES if USE_ROLE and d.attrs.get("league") in ROLE_LEAGUES else []
 
 
 SEASON_K: dict = {}  # league -> games of weight on the long-run level (blank = off)
@@ -213,6 +225,11 @@ def stat_frame(ctx: dict, stat: str) -> pd.DataFrame:
     d["l10"] = g.transform(lambda s: s.shift(1).rolling(10, min_periods=1).mean())
     d["season_avg"] = d.groupby(["player_id", "season"], sort=False)["y"].transform(
         lambda s: s.shift(1).expanding().mean())
+    ns = d.groupby(["player_id", "season"], sort=False)["y"].transform(lambda s: s.notna().cumsum().shift(1).fillna(0))
+    c = 0.5 + 0.1 * d["base"].fillna(0)  # damp tiny counts
+    d["form_l10"] = np.log((d["l10"] + c) / (d["base"] + c)).clip(-0.8, 0.8).where(n >= 5, 0).fillna(0)
+    d["form_season"] = (np.log((d["season_avg"] + c) / (d["base"] + c)).clip(-0.8, 0.8)
+                        * np.minimum(ns, 20) / 20).fillna(0)
 
     # defense vs position: what this opponent gives up to this position group relative to expectation
     has = d["y"].notna() & d["base"].notna()
@@ -277,6 +294,7 @@ def stat_frame(ctx: dict, stat: str) -> pd.DataFrame:
         d[c] = d[c].fillna(0)
     d["log_base"] = np.log(d["base"])
     d.attrs["style_names"] = style_names
+    d.attrs["league"] = league
     return d
 
 
@@ -317,7 +335,8 @@ def design(d: pd.DataFrame, cols: list[str]) -> np.ndarray:
 def fit_predict(d: pd.DataFrame, min_train: int = 800) -> tuple[pd.DataFrame, dict]:
     """Refit monthly on the past only; predict the following month. Future rows get the latest fit."""
     styles = d.attrs.get("style_names", [])
-    match_cols = NON_MATCHUP + MATCHUP_FEATURES + styles
+    base_cols = NON_MATCHUP + _role_cols(d)
+    match_cols = base_cols + MATCHUP_FEATURES + styles
     d = d.copy()
     d["mu"], d["mu_nomatch"], d["alpha"] = np.nan, np.nan, np.nan
     usable = d["base"].notna() & (d["n_prior"] >= 3)
@@ -335,13 +354,13 @@ def fit_predict(d: pd.DataFrame, min_train: int = 800) -> tuple[pd.DataFrame, di
         off = tr["log_base"].to_numpy()
         y = tr["y"].to_numpy(float)
         b_full = fit_poisson(design(tr, match_cols), y, off)
-        b_nom = fit_poisson(design(tr, NON_MATCHUP), y, off)
+        b_nom = fit_poisson(design(tr, base_cols), y, off)
         in_mu = np.exp(design(tr, match_cols) @ b_full + off)
         alpha = max(0.002, float(np.sum((y - in_mu) ** 2 - in_mu) / np.sum(in_mu ** 2)))
         t = d[target]
         o = t["log_base"].to_numpy()
         d.loc[target, "mu"] = np.exp(design(t, match_cols) @ b_full + o)
-        d.loc[target, "mu_nomatch"] = np.exp(design(t, NON_MATCHUP) @ b_nom + o)
+        d.loc[target, "mu_nomatch"] = np.exp(design(t, base_cols) @ b_nom + o)
         d.loc[target, "alpha"] = alpha
         last = {"beta": dict(zip(["const", *match_cols], b_full.round(4).tolist())), "alpha": alpha, "n_train": len(tr)}
     return d, last
@@ -387,7 +406,7 @@ def add_keys(pg: pd.DataFrame, league: str, players: pd.DataFrame | None = None)
 def fit_live(d: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     """One fit on every finished game; projects only the upcoming (stat-less) rows."""
     styles = d.attrs.get("style_names", [])
-    cols = NON_MATCHUP + MATCHUP_FEATURES + styles
+    cols = NON_MATCHUP + _role_cols(d) + MATCHUP_FEATURES + styles
     d = d.copy()
     usable = d["base"].notna() & (d["n_prior"] >= 1)
     rotation = d["exp_hat"] >= d.groupby("group")["exp_hat"].transform(lambda s: s.quantile(ROTATION_Q))
