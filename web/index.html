@@ -291,13 +291,16 @@ footer.site{max-width:1360px;margin:0 auto;padding:28px 24px 100px;border-top:1p
  .prow,.prow.cmp{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"pc oc" "prop hc";row-gap:10px;column-gap:12px;padding:14px 16px}
  .prow .pc{grid-area:pc}.prow .prop{grid-area:prop}.prow .hcell{grid-area:hc;width:130px}.prow .oc{grid-area:oc}
  .prow .xcol{display:none}.phead{display:none}.prow .prop .pl{margin-bottom:3px}}
+.gsearch{display:flex;align-items:center;gap:8px;height:36px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:0 12px;color:var(--muted)}
+.gsearch input{border:0;background:none;outline:none;color:var(--ink);font:inherit;font-size:14px;width:150px}
+@media (max-width:900px){.gsearch input{width:90px}}
 </style>
 </head>
 <body>
 <header><div class="hwrap">
   <a class="brand" href="#/"><span class="mk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel <em>Picks</em></span></a>
   <nav class="main" id="nav"></nav>
-  <div class="hright"><span class="live" id="live"></span>
+  <div class="hright"><label class="gsearch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="gq" placeholder="Find a player" autocomplete="off"></label><span class="live" id="live"></span>
     <button class="icon-btn" id="theme" aria-label="Toggle light and dark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div>
 </div></header>
 <div class="sub-bar"><div class="sbwrap" id="sports"></div></div>
@@ -789,14 +792,22 @@ function pagePlayers(){
   if(F.team)rows=rows.filter(r=>r.team_id===F.team);
   if(!F.pq&&!F.team)rows=rows.filter(r=>r.gp>=Math.min(3,Math.max(...v.players.map(x=>x.gp))/3));
   const teams=[...v.teams].sort((a,b)=>a.name.localeCompare(b.name));
-  return `<div class="ph"><div><h1>Players</h1><p>Every ${LGN[lg]} player this season: ${v.players.length.toLocaleString()} in all. Players with a line today show it on the right.</p></div></div>${sportTabs("plg")}
-  <div class="filters"><label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input data-f="pq" placeholder="Search any player or team" value="${esc(F.pq||"")}"></label>
+  let results="";
+  if(F.pq){
+    const q=F.pq, lgs=league==="all"?["nfl","nba","nhl","mlb"]:[lg], secs=[];
+    for(const l of lgs)for(const c of Object.keys(S.cols[l])){
+      const rs=S.leagues[l].players.filter(r=>r.cat===c&&(!F.team||l!==lg||r.team_id===F.team)&&(r.name+" "+(meta(l,r.team_id).name||"")+" "+abbr(l,r.team_id,"")).toLowerCase().includes(q));
+      if(rs.length)secs.push(`<div class="sec" style="margin-top:22px"><h2>${LGN[l]} · ${CATN[c]}</h2><span class="sub">${rs.length} found</span></div>`+statTable(l,rs,c,{l5:F.l5,limit:60}));
+    }
+    results=secs.join("")||`<div class="panel empty">No player or team matches “${esc(F.pq)}”.</div>`;
+  }
+  return `<div class="ph"><div><h1>Players</h1><p>${F.pq?`Results for “${esc(F.pq)}” across ${league==="all"?"every sport":LGN[lg]}. Clear the search to browse by position.`:`Every ${LGN[lg]} player this season: ${v.players.length.toLocaleString()} in all. Players with a line today show it on the right.`}</p></div></div>${F.pq?"":sportTabs("plg")}
+  <div class="filters"><label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input data-f="pq" placeholder="Search any player in ${league==="all"?"any sport":LGN[lg]}" value="${esc(F.pq||"")}"></label>
    <select data-f="team"><option value="">All teams</option>${teams.map(t=>`<option value="${t.team_id}" ${F.team===t.team_id?"selected":""}>${esc(t.name)}</option>`).join("")}</select>
-   ${cats.length>1?`<div class="seg">${cats.map(c=>`<button data-set="pcat:${c}" class="${c===cat?"on":""}">${CATN[c]}</button>`).join("")}</div>`:""}
+   ${!F.pq&&cats.length>1?`<div class="seg">${cats.map(c=>`<button data-set="pcat:${c}" class="${c===cat?"on":""}">${CATN[c]}</button>`).join("")}</div>`:""}
    <div class="seg"><button data-set="l5:" class="${F.l5?"":"on"}">Season</button><button data-set="l5:1" class="${F.l5?"on":""}">Last 5</button></div>
-   <button class="chip ${F.today?"on":""}" data-set="today:${F.today?"":"1"}">Playing today</button></div>
-  ${rows.length?statTable(lg,rows,cat,{l5:F.l5}):`<div class="panel empty">No players match.</div>`}
-  <p class="note" style="margin-top:10px">Showing ${Math.min(200,rows.length)} of ${rows.length}. Search or pick a team to find anyone else.</p>`}
+   ${F.pq?"":`<button class="chip ${F.today?"on":""}" data-set="today:${F.today?"":"1"}">Playing today</button>`}</div>
+  ${F.pq?results:rows.length?statTable(lg,rows,cat,{l5:F.l5})+`<p class="note" style="margin-top:10px">Showing ${Math.min(200,rows.length)} of ${rows.length}. Search for anyone by name, or pick a team.</p>`:`<div class="panel empty">No players match.</div>`}`}
 function pageStatPlayer(lg,pid){
   const sp=_PB.get(lg+":"+pid); if(sp){location.replace("#/player/"+pk(sp.player_id,sp.game_id));return ""}
   const r=S?.leagues[lg]?.players.find(x=>x.player_id===pid); if(!r)return `<div class="panel empty">Player not found.</div>`;
@@ -850,7 +861,8 @@ document.addEventListener("input",e=>{
     const el=document.querySelector(`[data-f="${f}"]`);if(el&&el.tagName==="INPUT"){el.focus();el.setSelectionRange(pos,pos)}}
   if(e.target.dataset.stake!==undefined){lset("stake",e.target.value);renderSlip()}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape")renderSlip(false)});
+document.addEventListener("keydown",e=>{
+  if(e.target.id==="gq"&&e.key==="Enter"){F.pq=e.target.value.trim().toLowerCase();if(route()[0]!=="players")location.hash="#/players";else render();e.target.blur();return}if(e.key==="Escape")renderSlip(false)});
 document.addEventListener("mousemove",e=>{
   const ch=e.target.closest(".chart"); document.querySelectorAll(".tip").forEach(t=>{if(!ch||!ch.contains(t))t.style.opacity=0}); if(!ch)return;
   const pts=JSON.parse(ch.dataset.pts||"[]"), r=ch.getBoundingClientRect(), sh=ch.querySelector("svg").getBoundingClientRect().height, mx=(e.clientX-r.left)/r.width;
