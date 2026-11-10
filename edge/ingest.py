@@ -268,6 +268,7 @@ def refresh_rosters(leagues: list[str]):
         tl = [t["team"] for s in teams.get("sports", []) for l in s["leagues"] for t in l["teams"]]
         def roster(t):
             return t["id"], get(f"{SITE}/{sport}/{league}/teams/{t['id']}/roster") or {}
+        current = []
         with ThreadPoolExecutor(WORKERS) as pool:
             for tid, j in pool.map(roster, tl):
                 groups = j.get("athletes") or []
@@ -275,6 +276,8 @@ def refresh_rosters(leagues: list[str]):
                 for g in groups:
                     athletes.extend(g["items"] if isinstance(g, dict) and "items" in g else [g])
                 for a in athletes:
+                    current.append({"id": str(a["id"]), "team_id": str(tid), "name": a.get("displayName"),
+                                    "pos": (a.get("position") or {}).get("abbreviation")})
                     con.execute(
                         "INSERT OR REPLACE INTO players VALUES(?,?,?,?,?,?,?)",
                         (league, str(a["id"]), str(tid), a.get("displayName"),
@@ -282,7 +285,9 @@ def refresh_rosters(leagues: list[str]):
                          (a.get("bats") or {}).get("abbreviation"),
                          (a.get("throws") or {}).get("abbreviation")))
         con.commit()
-        print(f"[{league}] rosters refreshed", flush=True)
+        if current:  # today's rosters, so the site can list every rostered player
+            (ROOT / "data" / f"rosters_{league}.json").write_text(json.dumps(current))
+        print(f"[{league}] rosters refreshed: {len(current)} players", flush=True)
     con.close()
 
 

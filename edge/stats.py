@@ -26,7 +26,7 @@ COLS = {
             "RB": ["rush_att", "rush_yds", "rush_td", "tgt", "rec", "rec_yds", "rush_rec_yds"],
             "WR": ["tgt", "rec", "rec_yds", "rec_td", "rush_yds"],
             "TE": ["tgt", "rec", "rec_yds", "rec_td"],
-            "DEF": ["tackles", "def_sacks"]},
+            "DEF": ["tackles", "def_sacks"], "OTH": []},
     "nhl": {"F": ["toi", "sog", "g", "a", "p", "bs", "hits"], "D": ["toi", "sog", "g", "a", "p", "bs", "hits"],
             "G": ["sa", "sv", "ga"]},
     "mlb": {"BAT": ["pa", "h", "r", "rbi", "hr", "bb", "k", "hrr"], "P": ["bf", "p_outs", "p_k", "p_h", "p_er", "p_bb"]},
@@ -173,7 +173,31 @@ def players_table(league: str, season: int, teams: dict) -> list[dict]:
         if league == "mlb" and cat == "BAT" and x["ab"].sum():
             rec["avg"]["avg_"] = round(float(x["h"].sum() / x["ab"].sum()), 3)
         out.append(rec)
+    # every rostered player, including those without a game yet this season
+    f = ROOT / "data" / f"rosters_{league}.json"
+    if f.exists():
+        roster_now = {r["id"]: r for r in json.loads(f.read_text())}
+        have = {r["player_id"] for r in out}
+        for r in out:
+            if r["player_id"] in roster_now:
+                r["team_id"] = roster_now[r["player_id"]]["team_id"]
+        for pid, r in roster_now.items():
+            if pid not in have:
+                out.append({"player_id": pid, "name": r["name"], "team_id": r["team_id"], "pos": r["pos"],
+                            "cat": _roster_cat(league, r["pos"]), "gp": 0, "last": None, "avg": {}, "l5": {}})
     return [r for r in out if not teams or r["team_id"] in teams]
+
+
+def _roster_cat(league: str, pos: str | None) -> str:
+    pos = (pos or "").upper()
+    if league == "nba":
+        return "ALL"
+    if league == "nhl":
+        return "G" if pos == "G" else "D" if pos == "D" else "F"
+    if league == "mlb":
+        return "P" if pos in ("P", "SP", "RP") else "BAT"
+    return {"QB": "QB", "RB": "RB", "FB": "RB", "WR": "WR", "TE": "TE"}.get(
+        pos, "DEF" if pos in ("LB", "CB", "S", "DT", "DE", "DB", "NT", "OLB", "ILB", "SS", "FS", "EDGE") else "OTH")
 
 
 def build() -> dict:

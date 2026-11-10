@@ -656,7 +656,7 @@ const SHORT={min:"MIN",pts:"PTS",reb:"REB",ast:"AST",fg3m:"3PM",stl:"STL",blk:"B
  rush_att:"CAR",rush_yds:"RUSH YDS",rush_td:"RUSH TD",tgt:"TGT",rec:"REC",rec_yds:"REC YDS",rec_td:"REC TD",rush_rec_yds:"SCRIM YDS",tackles:"TKL",def_sacks:"SACKS",
  toi:"TOI",sog:"SOG",g:"G",a:"A",p:"PTS",bs:"BLK",hits:"HITS",sa:"SA",sv:"SV",ga:"GA",sv_pct:"SV%",pa:"PA",h:"H",r:"R",rbi:"RBI",hr:"HR",bb:"BB",k:"K",hrr:"H+R+RBI",avg_:"AVG",
  bf:"BF",p_outs:"OUTS",p_k:"K",p_h:"H",p_er:"ER",p_bb:"BB",era:"ERA",ip:"IP"};
-const CATN={ALL:"All players",QB:"Quarterbacks",RB:"Running backs",WR:"Receivers",TE:"Tight ends",DEF:"Defense",F:"Forwards",D:"Defensemen",G:"Goalies",BAT:"Hitters",P:"Pitchers"};
+const CATN={OTH:"Linemen & specialists",ALL:"All players",QB:"Quarterbacks",RB:"Running backs",WR:"Receivers",TE:"Tight ends",DEF:"Defense",F:"Forwards",D:"Defensemen",G:"Goalies",BAT:"Hitters",P:"Pitchers"};
 const MAIN={ALL:"pts",QB:"pass_yds",RB:"rush_yds",WR:"rec_yds",TE:"rec_yds",DEF:"tackles",F:"p",D:"p",G:"sv",BAT:"h",P:"p_k"};
 const EXTRA={G:["sv_pct"],P:["ip","era"],BAT:["avg_"]};
 const LGN={nfl:"NFL",nba:"NBA",nhl:"NHL",mlb:"MLB"};
@@ -759,11 +759,12 @@ function pageTeams(){
 function statTable(lg,rows,cat,opts={}){
   const cols=[...(S.cols[lg][cat]||[]),...(EXTRA[cat]||[]).filter(c=>rows.some(r=>r.avg[c]!=null))], useL5=opts.l5;
   const sk=sort.st||"", k=sk.replace("-",""), key=cols.includes(k)?k:(MAIN[cat]&&cols.includes(MAIN[cat])?MAIN[cat]:cols[1]||cols[0]), dir=cols.includes(k)?(sk[0]==="-"?-1:1):-1;
-  rows=[...rows].sort((a,b)=>(((useL5?a.l5:a.avg)[key]??-1)-((useL5?b.l5:b.avg)[key]??-1))*dir);
+  const reg=r=>r.gp>=3?1:r.gp>0?.5:0;
+  rows=[...rows].sort((a,b)=>(reg(b)-reg(a))||(((useL5?a.l5:a.avg)[key]??-1)-((useL5?b.l5:b.avg)[key]??-1))*dir||a.name.localeCompare(b.name));
   return `<div class="panel tbl"><table><thead><tr><th>Player</th><th class="r">GP</th>${cols.map(c=>`<th class="r" data-s="st:${c}">${SHORT[c]||c}${key===c?(dir===1?" ▴":" ▾"):""}</th>`).join("")}<th>Today</th></tr></thead><tbody>
   ${rows.slice(0,opts.limit||200).map(r=>{const sp=_PB.get(lg+":"+r.player_id), top=sp&&Object.entries(sp.stats).find(([,s])=>s.offers.length);
     const o=top?.[1].offers[0], side=o?(o.side||(o.p_over>=.5?"over":"under")):null;
-    return `<tr class="go" data-go="${sp?`#/player/${pk(sp.player_id,sp.game_id)}`:`#/ps/${lg}/${r.player_id}`}"><td><div class="pcell">${headshot(lg,r.player_id,r.name,r.team_id)}<div><b>${esc(r.name)}</b><div class="note">${esc(r.pos||"")} · ${esc(abbr(lg,r.team_id,""))}</div></div></div></td>
+    return `<tr class="go" data-go="${sp?`#/player/${pk(sp.player_id,sp.game_id)}`:`#/ps/${lg}/${r.player_id}`}"><td><div class="pcell">${headshot(lg,r.player_id,r.name,r.team_id)}<div><b>${esc(r.name)}</b><div class="note">${esc(r.pos||"")} · ${esc(abbr(lg,r.team_id,""))}${r.gp?"":" · no games yet this season"}</div></div></div></td>
     <td class="r muted">${r.gp}</td>${cols.map(c=>`<td class="r">${c===key?"<b>":""}${fmtv(c,(useL5?r.l5:r.avg)[c])}${c===key?"</b>":""}</td>`).join("")}
     <td>${o?`<span class="side ${side}">${side==="over"?"O":"U"} ${o.line}</span> <span class="note">${esc(top[1].label)} · ${pct(o["p_"+side])}</span>`:sp?`<span class="note">Plays ${esc(abbr(lg,sp.opp_id,sp.opp))}</span>`:""}</td></tr>`}).join("")}</tbody></table></div>`}
 function pageTeam(lg,id){
@@ -790,7 +791,7 @@ function pagePlayers(){
   if(F.pq)rows=rows.filter(r=>(r.name+" "+(meta(lg,r.team_id).name||"")+" "+abbr(lg,r.team_id,"")).toLowerCase().includes(F.pq));
   if(F.today)rows=rows.filter(r=>_PB.has(lg+":"+r.player_id));
   if(F.team)rows=rows.filter(r=>r.team_id===F.team);
-  if(!F.pq&&!F.team)rows=rows.filter(r=>r.gp>=Math.min(3,Math.max(...v.players.map(x=>x.gp))/3));
+
   const teams=[...v.teams].sort((a,b)=>a.name.localeCompare(b.name));
   let results="";
   if(F.pq){
@@ -814,7 +815,7 @@ function pageStatPlayer(lg,pid){
   const cols=[...(S.cols[lg][r.cat]||[]),...(EXTRA[r.cat]||[]).filter(c=>r.avg[c]!=null)];
   return `<a href="#/players" class="note">← Players</a>
   <div class="panel phero" style="margin-top:12px">${headshot(lg,pid,r.name,r.team_id,"av lg")}<div><h1>${esc(r.name)}</h1>
-   <div class="note" style="font-size:15px">${esc(r.pos||"")} · <a href="#/team/${lg}/${r.team_id}" style="color:var(--accent);font-weight:600">${esc(meta(lg,r.team_id).name||"")}</a> · ${r.gp} games · last played ${r.last}</div>
+   <div class="note" style="font-size:15px">${esc(r.pos||"")} · <a href="#/team/${lg}/${r.team_id}" style="color:var(--accent);font-weight:600">${esc(meta(lg,r.team_id).name||"")}</a> · ${r.gp?`${r.gp} games · last played ${r.last}`:"No games yet this season"}</div>
    <div class="note" style="margin-top:6px">No game or line on today's board.</div></div></div>
   <div class="sec"><h2>Per game</h2></div><div class="panel tbl"><table><thead><tr><th></th>${cols.map(c=>`<th class="r">${SHORT[c]||c}</th>`).join("")}</tr></thead><tbody>
    <tr><td><b>Season</b></td>${cols.map(c=>`<td class="r"><b>${fmtv(c,r.avg[c])}</b></td>`).join("")}</tr>
@@ -881,10 +882,10 @@ function render(){
   const a2=route()[2];
   m.innerHTML=r==="game"?pageGame(arg):r==="player"?pagePlayer(arg):r==="team"?pageTeam(arg,a2):r==="ps"?pageStatPlayer(arg,a2):(P[r]||pageToday)();
 }
-async function loadStats(){try{const r=await fetch("stats.json?t="+Date.now());if(r.ok){S=await r.json();render()}}catch(e){}}
+async function loadStats(){try{const r=await fetch("stats.json",{cache:"no-cache"});if(r.ok){S=await r.json();render()}}catch(e){}}
 setInterval(loadStats,30*60000);loadStats();
 async function refresh(){
-  try{const res=await fetch("slate.json?t="+Date.now());if(!res.ok)throw 0;D=await res.json();render();renderSlip()}
+  try{const res=await fetch("slate.json",{cache:"no-cache"});if(!res.ok)throw 0;const nd=await res.json();if(D&&nd.generated===D.generated)return;D=nd;render();renderSlip()}
   catch(e){$("#live").textContent="Can't reach the model"}
 }
 setInterval(()=>{if(!D)return;const s=Math.max(0,Math.round((new Date(D.next_refresh)-Date.now())/1000));

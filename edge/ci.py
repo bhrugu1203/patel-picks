@@ -22,6 +22,10 @@ def main():
         tracker.grade()
     except Exception as e:  # a bad scoreboard response should not stop the board
         print("results update failed:", e, flush=True)
+    try:
+        ingest.refresh_rosters(LEAGUES)  # signings, releases and trades
+    except Exception as e:
+        print("roster refresh failed:", e, flush=True)
     stats.write()
     every = os.environ.get("REFRESH_MINUTES", "30")
     live.main(["--once", "--every", every, "--leagues", ",".join(LEAGUES)])
