@@ -294,6 +294,26 @@ footer.site{max-width:1360px;margin:0 auto;padding:28px 24px 100px;border-top:1p
 .gsearch{display:flex;align-items:center;gap:8px;height:36px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:0 12px;color:var(--muted)}
 .gsearch input{border:0;background:none;outline:none;color:var(--ink);font:inherit;font-size:14px;width:150px}
 @media (max-width:900px){.gsearch input{width:90px}}
+.prow[data-tg]{cursor:pointer;transition:background .12s}
+.prow.open{background:var(--panel2)}
+.prow .chev{display:inline-block;margin-left:10px;color:var(--muted);font-size:20px;line-height:1;transition:transform .15s;vertical-align:middle}
+.prow.open .chev{transform:rotate(90deg);color:var(--accent)}
+.prow .oc{display:flex;align-items:center;justify-content:flex-end}
+.detail{grid-column:1/-1;display:grid;grid-template-columns:1.1fr 1.3fr 1fr;gap:22px;padding:18px 4px 6px;margin-top:6px;border-top:1px dashed var(--line2);cursor:default}
+.detail .dt{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px}
+.detail .whylist{padding:0}
+.dchart{position:relative;display:flex;align-items:flex-end;gap:5px;height:140px}
+.dchart .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px}
+.dchart .b i{width:100%;max-width:30px;border-radius:5px 5px 2px 2px}
+.dchart .b i.h{background:var(--good)} .dchart .b i.m{background:var(--bad);opacity:.7}
+.dchart .b span{font-size:11.5px;font-weight:700;line-height:16px} .dchart .b em{font-style:normal;font-size:10px;color:var(--muted);line-height:17px;height:17px}
+.dchart .ln{position:absolute;left:0;right:0;border-top:2px dashed var(--ink2);opacity:.75;pointer-events:none}
+.dchart .ln b{position:absolute;right:0;top:-19px;font-size:10.5px;background:var(--ink);color:var(--bg);padding:1px 6px;border-radius:5px}
+.dhits{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}
+.dhb{border-radius:10px;padding:8px 4px;text-align:center;border:1px solid var(--line)} .dhb b{display:block;font-size:15px} .dhb span{display:block;font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.dk{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px} .dk span{color:var(--muted)} .dk b{text-align:right} .dk small{color:var(--muted);font-weight:500}
+@media (max-width:1100px){.detail{grid-template-columns:1fr 1fr}.detail .dcol:first-child{grid-column:1/-1}}
+@media (max-width:760px){.detail{grid-area:det;grid-template-columns:1fr}.prow.open{grid-template-areas:"pc oc" "prop hc" "det det"}.dhits{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -679,7 +699,8 @@ function hitBar(p){return `<div class="hitc"><b style="color:${confColor(p)}">${
 function pickRow(x,compact){
   const g=_G.get(x.game_id), h=x.hit_l10, hn=h&&h.n?(x.side==="over"?h.over:h.n-h.over):null;
   const diff=x.proj!=null?x.proj-x.line:null;
-  return `<div class="prow ${compact?"cmp":""}">
+  const id=legKey(x), isOpen=open.has(id);
+  return `<div class="prow ${compact?"cmp":""} ${isOpen?"open":""}" data-tg="${esc(id)}" title="Click for why the model likes this play">
    <div class="pc">${headshot(x.league,x.player_id,x.player,x.team_id)}<div style="min-width:0"><a class="pname" href="#/player/${pk(x.player_id,x.game_id)}">${esc(x.player)}</a>
     <div class="pmeta">${esc(abbr(x.league,x.team_id,x.team))} ${g&&g.home_id===x.team_id?"vs":"@"} ${esc(abbr(x.league,x.opp_id,x.opp))}${g?" · "+timeOf(g.date):""}${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}</div></div></div>
    <div class="prop"><div class="pl">${esc(x.label)}</div><div><span class="side ${x.side}">${x.side==="over"?"Over":"Under"} ${x.line}</span></div></div>
@@ -687,7 +708,43 @@ function pickRow(x,compact){
    <div class="hcell">${hitBar(x.p)}</div>
    ${compact?"":`<div class="r xcol"><b>${x.proj??"–"}</b><div class="pmeta ${diff==null?"":(x.side==="over"?diff>0:diff<0)?"pos":"neg"}">${diff==null?"":(diff>0?"+":"")+diff.toFixed(1)+" vs line"}</div></div>
    <div class="r xcol"><b>${hn!=null?`${hn}/${h.n}`:"–"}</b><div class="pmeta">last 10</div></div>`}
-   <div class="r oc">${addBtn(x)}</div></div>`}
+   <div class="r oc">${addBtn(x)}<span class="chev" aria-hidden="true">›</span></div>
+   ${isOpen?pickDetail(x):""}</div>`}
+function pickDetail(x){
+  const p=_P.get(pk(x.player_id,x.game_id)), s=p?.stats?.[x.stat]; if(!s)return `<div class="detail"><div class="note">No stats for this play.</div></div>`;
+  const over=x.side==="over", L=x.line, w=x.why||{pro:[],con:[]};
+  const log=(s.log||[]).slice(-10), mx=Math.max(1,...log.map(e=>e[2]),L)*1.12;
+  const hitOf=e=>over?e[2]>L:e[2]<L;
+  const rate=h=>!h||!h.n?null:{k:over?h.over:h.n-h.over,n:h.n};
+  const hb=(lbl,h)=>{const r=rate(h);const v=r?r.k/r.n:null;const a=v==null?0:Math.min(.32,Math.abs(v-.5)*.9);
+    return `<div class="dhb" style="background:${v==null?"var(--panel2)":v>=.5?`rgba(53,208,127,${a})`:`rgba(255,107,107,${a})`}"><b>${r?`${r.k}/${r.n}`:"–"}</b><span>${lbl}</span></div>`};
+  const opp=abbr(x.league,p.opp_id,p.opp), diff=s.proj-L;
+  const kv=(k,v,cls="")=>`<div class="dk"><span>${k}</span><b class="${cls}">${v}</b></div>`;
+  return `<div class="detail">
+   <div class="dcol">
+    <div class="dt">Why ${over?"the over":"the under"}</div>
+    <ul class="whylist">${w.pro.map(t=>`<li>${esc(t)}</li>`).join("")}${w.con.map(t=>`<li class="c">${esc(t)}</li>`).join("")}${!w.pro.length&&!w.con.length?`<li>Model projects ${s.proj}, ${Math.abs(diff).toFixed(1)} ${diff>0?"above":"below"} the line</li>`:""}</ul>
+    ${x.ev!=null&&x.ev<0?`<p class="note" style="margin:12px 0 0">Heads up: the model favors this side, but the price is steeper than its ${pct(x.p)} chance justifies (value ${evtxt(x.ev)}).</p>`:""}
+   </div>
+   <div class="dcol">
+    <div class="dt">Last ${log.length} games · ${esc(x.label)} <span class="note">(line ${L})</span></div>
+    ${log.length?`<div class="dchart">${log.map(e=>`<div class="b" title="${e[0]} vs ${esc(e[1])}: ${e[2]}"><span>${e[2]}</span><i class="${hitOf(e)?"h":"m"}" style="height:${Math.max(3,e[2]/mx*100).toFixed(0)}px"></i><em>${esc(String(e[1]).split(" ").slice(-1)[0].slice(0,3).toUpperCase())}</em></div>`).join("")}
+      <div class="ln" style="bottom:${(19+L/mx*100).toFixed(0)}px"><b>${L}</b></div></div>`:`<div class="note">No recent games.</div>`}
+    <div class="dhits">${hb("Last 5",s.hit?.l5)}${hb("Last 10",s.hit?.l10)}${hb("Last 20",s.hit?.l20)}${hb("vs "+opp,s.hit?.vs_opp)}${hb("Season+",s.hit?.all)}</div>
+   </div>
+   <div class="dcol">
+    <div class="dt">The numbers</div>
+    ${kv("Projection",`${s.proj} <small>(${diff>0?"+":""}${diff.toFixed(1)} vs line)</small>`,(over?diff>0:diff<0)?"pos":"neg")}
+    ${kv("Last 5 / Last 10",`${s.l5??"–"} / ${s.l10??"–"}`)}
+    ${kv("Season average",s.season??"–")}
+    ${kv("vs "+esc(opp),s.vs_opp?.n?`${s.vs_opp.avg} avg in ${s.vs_opp.n}`:"No meetings")}
+    ${s.vs_key?.name?kv("vs "+esc(s.vs_key.name),s.vs_key.n?`${s.vs_key.avg} avg in ${s.vs_key.n}`:"No history"):""}
+    ${kv(`${esc(opp)} defense vs ${esc(x.pos||"pos")}`,s.def_rank?`#${s.def_rank} of ${s.def_n} <small>(${s.def_pct>0?"+":""}${s.def_pct}% allowed)</small>`:"–")}
+    ${s.exp!=null?kv(x.league==="nba"?"Expected minutes":x.league==="nhl"?"Expected ice time":"Expected volume",s.exp):""}
+    ${s.vacated>=.05?kv("Teammates out",`+${Math.round(s.vacated*100)}% usage`,"pos"):""}
+    ${kv("Hit chance",pct(x.p))}
+    <a class="more" href="#/player/${pk(x.player_id,x.game_id)}" style="display:inline-block;margin-top:12px">Full player page →</a>
+   </div></div>`}
 function pickHead(compact){return `<div class="prow phead ${compact?"cmp":""}"><div>Player</div><div>Prop</div>${compact?"":`<div class="c">Grade</div>`}<div>Hit chance</div>${compact?"":`<div class="r">Projection</div><div class="r">Hit rate</div>`}<div class="r">Odds</div></div>`}
 function pickList(title,items,badge,empty,compact,more){
   return `<div class="panel plist"><div class="listhd"><h3>${title}</h3>${badge||""}<span class="note" style="margin-left:auto">${items.length} ${items.length===1?"play":"plays"}</span>${more||""}</div>
@@ -848,6 +905,7 @@ document.addEventListener("click",e=>{
   if(c("[data-add]")){e.preventDefault();e.stopPropagation();const l=JSON.parse(c("[data-add]").dataset.add);const i=slip.findIndex(x=>x.key===l.key);
     if(i>=0)slip.splice(i,1);else{slip=slip.filter(x=>!(x.player_id===l.player_id&&x.stat===l.stat&&x.game_id===l.game_id));slip.push(l)}saveSlip();render();return}
   if(c("[data-parlay]")){slip=JSON.parse(c("[data-parlay]").dataset.parlay);saveSlip();renderSlip(true);render();return}
+  if(c(".prow[data-tg]")&&!c("a,button,input,select,.detail")){const id=c(".prow[data-tg]").dataset.tg;open.has(id)?open.delete(id):open.add(id);render();return}
   if(c("[data-open]")){const id=c("[data-open]").dataset.open;open.has(id)?open.delete(id):open.add(id);render();return}
   if(c("[data-set]")){const [k,v]=c("[data-set]").dataset.set.split(":");F[k]=v;render();return}
   if(c("th[data-s]")){const [pg,k]=c("th[data-s]").dataset.s.split(":");sort[pg]=sort[pg]==="-"+k?k:"-"+k;render();return}
