@@ -27,7 +27,22 @@ CREATE TABLE IF NOT EXISTS parlays(
 def _con():
     con = connect()
     con.executescript(SCHEMA)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(picks)")}
+    for c in ("grade", "src"):  # added later: model grade, and which list the play was shown on
+        if c not in cols:
+            con.execute(f"ALTER TABLE picks ADD COLUMN {c} TEXT")
+            if c == "src":
+                con.execute("UPDATE picks SET src='best' WHERE src IS NULL")
+    for pid, ev, pr in con.execute("SELECT pick_id, ev, p FROM picks WHERE grade IS NULL").fetchall():
+        con.execute("UPDATE picks SET grade=? WHERE pick_id=?", (grade_of(ev, pr or 0), pid))
     return con
+
+
+def grade_of(ev, p) -> str:
+    """Same grade the site shows: value against the price, plus hit chance."""
+    if ev is not None and ev == ev:
+        return "A+" if ev >= 0.10 and p >= 0.55 else "A" if ev >= 0.06 else "B" if ev >= 0.03 else "C"
+    return "A" if p >= 0.64 else "B" if p >= 0.58 else "C"
 
 
 def _pid(x: dict) -> str:
@@ -38,11 +53,21 @@ def record(boards: dict, priced: list[dict]):
     """Store new picks; refresh the latest line/price on open ones (becomes the closing number)."""
     con = _con()
     now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    for x in boards.get("sheet", []):
+    def ins(x, src):
         con.execute("""INSERT OR IGNORE INTO picks(pick_id, posted, league, game_id, player_id, player, team, opp,
-                       stat, label, side, book, line, price, p, ev, conf) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       stat, label, side, book, line, price, p, ev, conf, grade, src)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (_pid(x), now, x["league"], x["game_id"], x["player_id"], x["player"], x["team"], x["opp"],
-                     x["stat"], x["label"], x["side"], x["book"], x["line"], x["price"], x["p"], x["ev"], x.get("conf")))
+                     x["stat"], x["label"], x["side"], x["book"], x["line"], x.get("price"), x["p"], x.get("ev"),
+                     x.get("conf"), grade_of(x.get("ev"), x["p"]), src))
+    # every play shown on the site is logged the first time it appears, so the record covers them all
+    for x in boards.get("overs", []) + boards.get("unders", []):
+        ins(x, "play")
+    for x in boards.get("leans", []):
+        ins(x, "lean")
+    for x in boards.get("sheet", []):
+        ins(x, "best")
+        con.execute("UPDATE picks SET src='best' WHERE pick_id=?", (_pid(x),))
     for pl in boards.get("parlays", []):
         legs = [_pid(l) for l in pl["legs"]]
         for l in pl["legs"]:  # legs must be graded too, even ones that came from the most-likely list
@@ -93,7 +118,10 @@ def grade():
             else:
                 won = (val > r.line) == (r.side == "over")
                 result = "win" if won else "loss"
-                profit = float(X.payout(r.price)) if won else -1.0
+                if pd.isna(r.price):  # line posted without odds: graded for hit rate only
+                    profit = None
+                else:
+                    profit = float(X.payout(r.price)) if won else -1.0
             con.execute("UPDATE picks SET actual=?, result=?, profit=?, graded=? WHERE pick_id=?",
                         (val, result, profit, now, r.pick_id))
     # parlays: settle once every leg is graded (a void or push leg drops out at even odds)
@@ -126,17 +154,28 @@ def summary() -> dict:
     picks = pd.read_sql("SELECT * FROM picks ORDER BY posted DESC", con)
     parl = pd.read_sql("SELECT * FROM parlays ORDER BY posted DESC", con)
     con.close()
-    out = {"overall": _rec(picks), "by_league": {}, "by_day": [], "recent": [], "parlays": _rec(parl), "parlay_recent": []}
+    if not picks.empty and "src" in picks:
+        picks["src"] = picks["src"].fillna("best")
+    best = picks[picks["src"] == "best"] if not picks.empty else picks
+    plays = picks[picks["src"].isin(["best", "play"]) & picks["price"].notna()] if not picks.empty else picks
+    leans = picks[picks["src"] == "lean"] if not picks.empty else picks
+    out = {"overall": _rec(best), "plays": _rec(plays), "leans": _rec(leans), "by_league": {}, "by_day": [], "recent": [],
+           "by_grade": {}, "by_side": {}, "by_stat": {}, "plays_by_league": {},
+           "parlays": _rec(parl), "parlay_recent": []}
     if picks.empty:
         return out
-    for lg, s in picks.groupby("league"):
+    for lg, s in best.groupby("league"):
         out["by_league"][lg] = _rec(s)
+    for key, col in (("by_grade", "grade"), ("by_side", "side"), ("by_stat", "label"), ("plays_by_league", "league")):
+        for k, s in plays.groupby(col):
+            out[key][k] = _rec(s)
     picks["day"] = pd.to_datetime(picks["posted"]).dt.tz_convert("America/New_York").dt.strftime("%Y-%m-%d")
-    for day, s in picks.groupby("day"):
+    for day, s in picks[picks.index.isin(plays.index)].groupby("day"):
         out["by_day"].append({"day": day, **_rec(s)})
     out["by_day"].sort(key=lambda r: r["day"], reverse=True)
+    picks = picks[picks["src"].isin(["best", "play", "lean"])]
     cols = ["posted", "league", "player", "team", "opp", "label", "side", "book", "line", "price", "conf", "ev",
-            "close_line", "close_price", "actual", "result", "profit"]
+            "close_line", "close_price", "actual", "result", "profit", "grade", "src"]
     out["recent"] = picks[cols].head(200).astype(object).where(picks[cols].head(200).notna(), None).to_dict("records")
     if not parl.empty:
         pc = ["posted", "name", "legs", "price", "p", "result", "profit"]
@@ -149,9 +188,10 @@ def _rec(s: pd.DataFrame) -> dict:
         return {"n": 0, "pending": 0}
     g = s[s["result"].isin(["win", "loss", "push"])]
     w, l, p = (g["result"] == "win").sum(), (g["result"] == "loss").sum(), (g["result"] == "push").sum()
-    units = float(g["profit"].sum()) if len(g) else 0.0
+    priced = g[g["profit"].notna()]
+    units = float(priced["profit"].sum()) if len(priced) else 0.0
     out = {"n": int(len(s)), "pending": int(s["result"].isna().sum()), "wins": int(w), "losses": int(l), "pushes": int(p),
-           "units": round(units, 2), "roi": round(units / len(g), 4) if len(g) else None,
+           "units": round(units, 2), "roi": round(units / len(priced), 4) if len(priced) else None,
            "hit": round(w / (w + l), 4) if (w + l) else None}
     if "close_price" in s.columns:
         c = s.dropna(subset=["close_price", "price"])

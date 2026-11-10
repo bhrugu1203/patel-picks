@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Patel Picks</title>
+<meta name="description" content="Player prop projections for the NFL, NBA, NHL and MLB. Overs and unders with hit chances, grades and the stats behind every pick, updated all day.">
+<meta property="og:title" content="Patel Picks">
+<meta property="og:description" content="Player prop picks for every NFL, NBA, NHL and MLB game, with the stats behind each one.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2335d07f'/%3E%3Cpath d='M14 44l14-14 9 9 14-18' fill='none' stroke='%230b0d10' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -114,6 +120,8 @@ details.why[open] summary:after{transform:rotate(-90deg)}
 .whylist li.c:before{background:var(--bad-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 8h6' fill='none' stroke='%23ff6b6b' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/16px no-repeat}
 .why-wrap{display:none} .pick.open .why-wrap{display:block}
 .tag{display:inline-flex;align-items:center;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;letter-spacing:.02em}
+.mv{margin-left:8px;font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.warnline{color:var(--warn)!important}
 .tag.q{background:var(--warn-soft);color:var(--warn)} .tag.gray{background:var(--panel3);color:var(--muted)}
 .tag.win{background:var(--good-soft);color:var(--good)} .tag.loss{background:var(--bad-soft);color:var(--bad)}
 /* ---------- tables ---------- */
@@ -245,6 +253,7 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 .prow .ln{font-weight:800;font-size:16px} .prow .ln small{display:block;font-size:12.5px;color:var(--muted);font-weight:500}
 .prow .ch{text-align:right;font-weight:800;font-size:18px} .prow .ch small{display:block;font-size:12.5px;color:var(--muted);font-weight:500}
 .side.over,.side.under{font-weight:800;border-radius:6px;padding:3px 8px;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 20px}@media(max-width:900px){.grid2{grid-template-columns:1fr}}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
 .tabs button{border:0;background:none;padding:12px 16px;font-weight:700;font-size:15px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
 .tabs button.on{color:var(--ink);border-color:var(--accent)} .tabs button .c{font-size:12px;color:var(--muted);margin-left:6px;font-weight:600}
@@ -320,6 +329,21 @@ tr.xrow{cursor:pointer} tr.xrow:hover td,tr.xrow.on td{background:var(--panel2)}
 tr.xdet td{background:var(--panel2);white-space:normal;padding:4px 20px 18px}
 tr.xdet .detail{margin-top:0}
 .cards{align-items:start}
+
+/* phone tab bar */
+.tabbar,.moresheet{display:none}
+@media (max-width:760px){
+  nav.main{display:none}
+  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:45;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tabbar a,.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;color:var(--muted);font-size:11px;font-weight:600;background:none;border:0;font-family:inherit}
+  .tabbar svg{width:22px;height:22px}
+  .tabbar .on{color:var(--accent)}
+  .moresheet.open{display:block;position:fixed;left:10px;right:10px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:46;background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:6px;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+  .moresheet a{display:block;padding:14px 16px;font-weight:600;font-size:16px;border-radius:10px;color:var(--ink)}
+  .moresheet a.on{color:var(--accent)} .moresheet a:active{background:var(--panel2)}
+  .slipbtn{bottom:calc(78px + env(safe-area-inset-bottom));right:14px}
+  footer.site{padding-bottom:90px}
+}
 </style>
 </head>
 <body>
@@ -332,6 +356,7 @@ tr.xdet .detail{margin-top:0}
 <div class="sub-bar"><div class="sbwrap" id="sports"></div></div>
 <main id="main"></main>
 <footer class="site"><span>Patel Picks · model projections for entertainment and research. Odds and lines can change at any time; always check your sportsbook.</span><span>21+ · Gambling problem? Call 1-800-GAMBLER</span></footer>
+<nav class="tabbar" id="tabbar" aria-label="Sections"></nav><div class="moresheet" id="more"></div>
 <button class="slipbtn" id="slipbtn">Bet slip <b id="slipn">0</b></button>
 <aside class="drawer" id="slip" aria-label="Bet slip"></aside>
 <script>
@@ -387,9 +412,20 @@ function heat(v,n){if(v==null)return '<span class="muted">–</span>';
   return `<span class="heat" style="background:${col}">${Math.round(v*100)}%${n?`<span class="muted" style="font-weight:500"> ${n}</span>`:""}</span>`}
 function meter(s){const n=Math.round((s||0)/2);return `<span class="meter" title="Edge score ${s?.toFixed(1)}/10 (10 = 15%+ expected value)"><i>${[1,2,3,4,5].map(i=>`<b class="${i<=n?"f":""}"></b>`).join("")}</i>${(s||0).toFixed(1)}</span>`}
 
+
+const TABS=[["","Home",'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],["picks","Picks",'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>'],
+  ["props","Props",'<path d="M4 6h16M4 12h16M4 18h10"/>'],["games","Games",'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'],["players","Players",'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>']];
+const MORE=[["teams","Teams"],["parlays","Parlays"],["results","Results"],["model","How the model works"]];
+function tabbar(r){const sec=(r==="game"?"games":r==="player"||r==="ps"?"players":r==="team"?"teams":r);
+  const inMore=MORE.some(([h])=>h===sec);
+  $("#tabbar").innerHTML=TABS.map(([h,n,i])=>`<a href="#/${h}" class="${sec===h?"on":""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${i}</svg>${n}</a>`).join("")
+   +`<button data-more class="${inMore?"on":""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</button>`;
+  $("#more").innerHTML=MORE.map(([h,n])=>`<a href="#/${h}" class="${sec===h?"on":""}">${n}</a>`).join("");
+  $("#more").classList.remove("open")}
 /* ===== shell ===== */
 function shell(){
   const r=route()[0];
+  tabbar(r);
   $("#nav").innerHTML=NAV.map(([h,n])=>`<a href="#/${h}" class="${(r===h)||(r==="game"&&h==="games")||((r==="player"||r==="ps")&&h==="players")||(r==="team"&&h==="teams")?"on":""}">${n}</a>`).join("");
   const counts={all:games().length}; for(const g of games())counts[g.league]=(counts[g.league]||0)+1;
   $("#sports").innerHTML=SPORTS.map(([k,n])=>`<button class="sport ${k===league?"on":""}" data-lg="${k}">${n}<span class="c">${counts[k]||0}</span></button>`).join("");
@@ -411,7 +447,7 @@ function pickCard(x){
     <div style="min-width:0"><a class="pname" href="#/player/${pk(x.player_id,x.game_id)}">${esc(x.player)}</a>
      <div class="pmeta">${esc(x.pos||"")} · ${esc(abbr(x.league,x.team_id,x.team))} ${g&&g.home_id===x.team_id?"vs":"@"} ${esc(abbr(x.league,x.opp_id,x.opp))}${g?" · "+timeOf(g.date):""} ${x.status?`<span class="tag q">${esc(x.status)}</span>`:""}</div></div>
     <div class="conf"><div class="v" style="color:${confColor(x.p)}">${Math.round(x.p*100)}%</div><div class="l">Hit chance</div></div></div>
-   <div class="market"><span class="side ${x.side}">${x.side==="over"?"OVER":"UNDER"}</span><span class="txt">${x.line}<small>${esc(x.label)}</small></span>
+   <div class="market"><span class="side ${x.side}">${x.side==="over"?"OVER":"UNDER"}</span><span class="txt">${x.line}<small>${esc(x.label)}${lineMove(x)}${roleTag(x)}</small></span>
     <button class="odds add ${inSlip(x)?"on":""}" data-add='${esc(JSON.stringify(slim(x)))}' title="Add to bet slip">${odds(x.price)}<small>${esc(bk(x.book))}</small></button></div>
    <div class="stats3">
     <div class="st"><div class="l">Projection</div><div class="v">${x.proj??"–"}</div></div>
@@ -600,20 +636,34 @@ function pagePlayer(key){
    ${dates.map(d=>{const op=(cols.flatMap(([,x])=>x.log||[]).find(e=>e[0]===d)||[])[1]||"";return `<tr><td class="muted">${d}</td><td>${esc(op)}</td>${cols.map(([,x])=>{const e=(x.log||[]).find(z=>z[0]===d);return `<td class="r">${e?e[2]:"–"}</td>`}).join("")}</tr>`}).join("")}</tbody></table></div>`:""}`}
 
 function pageResults(){
-  const R=D.results||{}, o=R.overall||{};
+  const R=D.results||{}, t=["best","plays","leans"].includes(F.rt)?F.rt:"best";
+  const o=(t==="best"?R.overall:t==="plays"?R.plays:R.leans)||{};
   const days=(R.by_day||[]).slice().reverse(); let c=0; const series=days.map(d=>({x:d.day,y:(c+=d.units||0)}));
-  return `<div class="ph"><div><h1>Results</h1><p>Every best bet is logged when posted and graded from the box score. 1 unit flat per pick.</p></div></div>
+  const src={best:["best"],plays:["best","play"],leans:["lean"]}[t];
+  const hist=(R.recent||[]).filter(inLg).filter(r=>src.includes(r.src||"best")&&(t!=="plays"||r.price!=null));
+  const tabs=[["best","Best bets",(R.overall||{}).n||0],["plays","Every priced play",(R.plays||{}).n||0],["leans","NFL leans (no odds)",(R.leans||{}).n||0]];
+  const desc={best:"The strict list only. Logged when posted and graded from the box score, 1 unit flat per pick.",
+    plays:"Every over and under the site showed with real odds, so you can see how each grade and side really does.",
+    leans:"Lines posted without odds. Graded for hit rate only, no units."};
+  const brk=(title,obj,name=k=>k)=>{const e=Object.entries(obj||{}).sort((a,b)=>(b[1].n||0)-(a[1].n||0));
+    return `<div class="panel tbl"><table><thead><tr><th>${title}</th><th>Record</th><th class="r">Win rate</th><th class="r">Units</th><th class="r">ROI</th><th class="r">Pending</th></tr></thead><tbody>
+    ${e.map(([k,r])=>`<tr><td><b>${name(k)}</b></td><td>${rec(r)}</td><td class="r">${pct(r.hit,1)}</td><td class="r">${units(r.units)}</td><td class="r">${r.roi!=null?pct(r.roi,1):"–"}</td><td class="r">${r.pending}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">Nothing logged yet.</td></tr>`}</tbody></table></div>`};
+  const gName=g=>`<span class="grade g${g.replace("+","p")}" style="width:34px;height:26px;font-size:13px">${g}</span>`;
+  return `<div class="ph"><div><h1>Results</h1><p>${desc[t]}</p></div></div>
+  <div class="tabs">${tabs.map(([k,n,c])=>`<button data-set="rt:${k}" class="${t===k?"on":""}">${n}<span class="c">${c}</span></button>`).join("")}</div>
   <div class="kpis">${kpi("Record",rec(o),o.pending?`${o.pending} pending`:"")}${kpi("Win rate",o.hit!=null?pct(o.hit,1):"–","pushes and voids excluded")}
-   ${kpi("Units",o.units!=null?`<span class="${o.units>=0?"pos":"neg"}">${o.units>=0?"+":""}${o.units.toFixed(2)}</span>`:"0.00",o.roi!=null?`ROI ${(o.roi*100).toFixed(1)}%`:"")}${kpi("Beat the close",o.wins+o.losses>0&&o.clv_beat!=null?pct(o.clv_beat):"–","best long-run sign of real edge")}</div>
-  <div class="sec"><h2>Units over time</h2></div><div class="panel pad">${series.length>1?lineChart(series):`<div class="empty">The chart fills in after picks have been graded on a couple of days.</div>`}</div>
-  <div class="sec"><h2>By sport</h2></div><div class="panel tbl"><table><thead><tr><th>Sport</th><th>Record</th><th class="r">Win rate</th><th class="r">Units</th><th class="r">ROI</th><th class="r">Pending</th></tr></thead><tbody>
-   ${Object.entries(R.by_league||{}).map(([l,r])=>`<tr><td><b>${l.toUpperCase()}</b></td><td>${rec(r)}</td><td class="r">${pct(r.hit,1)}</td><td class="r">${units(r.units)}</td><td class="r">${r.roi!=null?pct(r.roi,1):"–"}</td><td class="r">${r.pending}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">No picks logged yet.</td></tr>`}</tbody></table></div>
-  <div class="sec"><h2>Pick history</h2></div><div class="panel tbl"><table><thead><tr><th>Posted</th><th>Player</th><th>Pick</th><th class="r">Odds</th><th class="r">Chance</th><th class="r">Closed</th><th class="r">Actual</th><th>Result</th><th class="r">Units</th></tr></thead><tbody>
-   ${(R.recent||[]).filter(inLg).map(r=>`<tr><td class="muted">${new Date(r.posted).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</td>
+   ${t==="leans"?kpi("Graded",(o.wins||0)+(o.losses||0),"hit rate only"):kpi("Units",o.units!=null?`<span class="${o.units>=0?"pos":"neg"}">${o.units>=0?"+":""}${o.units.toFixed(2)}</span>`:"0.00",o.roi!=null?`ROI ${(o.roi*100).toFixed(1)}%`:"")}
+   ${kpi("Beat the close",o.wins+o.losses>0&&o.clv_beat!=null?pct(o.clv_beat):"–","best long-run sign of real edge")}</div>
+  ${t==="plays"?`<div class="sec"><h2>Units over time</h2></div><div class="panel pad">${series.length>1?lineChart(series):`<div class="empty">The chart fills in after plays have been graded on a couple of days.</div>`}</div>
+   <div class="grid2"><div><div class="sec"><h2>By grade</h2></div>${brk("Grade",R.by_grade,gName)}</div><div><div class="sec"><h2>Over vs under</h2></div>${brk("Side",R.by_side,k=>k==="over"?"Overs":"Unders")}</div></div>
+   <div class="grid2"><div><div class="sec"><h2>By sport</h2></div>${brk("Sport",R.plays_by_league,k=>k.toUpperCase())}</div><div><div class="sec"><h2>By prop type</h2></div>${brk("Prop",R.by_stat,esc)}</div></div>`
+  :t==="best"?`<div class="sec"><h2>By sport</h2></div>${brk("Sport",R.by_league,k=>k.toUpperCase())}`:""}
+  <div class="sec"><h2>Pick history</h2></div><div class="panel tbl"><table><thead><tr><th>Posted</th><th>Player</th><th>Pick</th><th class="r">Grade</th><th class="r">Odds</th><th class="r">Chance</th><th class="r">Closed</th><th class="r">Actual</th><th>Result</th><th class="r">Units</th></tr></thead><tbody>
+   ${hist.slice(0,120).map(r=>`<tr><td class="muted">${new Date(r.posted).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</td>
     <td><b>${esc(r.player)}</b> <span class="note">${r.league.toUpperCase()}</span></td><td><span class="${r.side==="over"?"pos":"neg"}" style="font-weight:700">${r.side==="over"?"O":"U"} ${r.line}</span> ${esc(r.label)}</td>
-    <td class="r">${odds(r.price)}</td><td class="r">${r.conf!=null?r.conf+"%":"–"}</td><td class="r muted">${r.close_line!=null?`${r.close_line} (${odds(r.close_price)})`:"–"}</td><td class="r">${r.actual??"–"}</td>
-    <td><span class="tag ${r.result==="win"?"win":r.result==="loss"?"loss":"gray"}">${r.result||"Pending"}</span></td><td class="r">${r.result&&r.result!=="void"?units(r.profit):"–"}</td></tr>`).join("")||`<tr><td colspan="9" class="muted">No picks logged yet.</td></tr>`}</tbody></table></div>
-  <div class="sec"><h2>Parlays</h2></div>${parlayRecord()}`}
+    <td class="r">${r.grade?gName(r.grade):"–"}</td><td class="r">${r.price!=null?odds(r.price):"–"}</td><td class="r">${r.conf!=null?r.conf+"%":"–"}</td><td class="r muted">${r.close_line!=null?`${r.close_line}${r.close_price!=null?` (${odds(r.close_price)})`:""}`:"–"}</td><td class="r">${r.actual??"–"}</td>
+    <td><span class="tag ${r.result==="win"?"win":r.result==="loss"?"loss":"gray"}">${r.result||"Pending"}</span></td><td class="r">${r.result&&r.result!=="void"&&r.profit!=null?units(r.profit):"–"}</td></tr>`).join("")||`<tr><td colspan="10" class="muted">Nothing logged yet. Plays are added the first time they appear on the site.</td></tr>`}</tbody></table></div>
+  ${t==="best"?`<div class="sec"><h2>Parlays</h2></div>${parlayRecord()}`:""}`}
 function parlayRecord(){const R=D.results||{}, pr=R.parlays||{};
   return `<div class="panel tbl"><table><thead><tr><th>Posted</th><th>Parlay</th><th class="r">Legs</th><th class="r">Odds</th><th>Result</th><th class="r">Units</th></tr></thead><tbody>
   ${(R.parlay_recent||[]).slice(0,15).map(p=>`<tr><td class="muted">${new Date(p.posted).toLocaleDateString([], {month:"short",day:"numeric"})}</td><td><b>${esc(p.name)}</b></td><td class="r">${JSON.parse(p.legs).length}</td><td class="r">${odds(p.price)}</td>
@@ -702,6 +752,16 @@ function allPicks(){
 function sortPicks(r,how){const f={value:gScore,hit:x=>x.p,edge:edgeOf}[how||"value"];return [...r].sort((a,b)=>f(b)-f(a))}
 function gradeBadge(x){const g=grade(x);return `<span class="grade g${g.replace("+","p")}" title="Model grade: value against the price and hit chance">${g}</span>`}
 function hitBar(p){return `<div class="hitc"><b style="color:${confColor(p)}">${pct(p)}</b><div class="bar"><i style="width:${Math.round(p*100)}%;background:${p>=.6?"var(--good)":p>=.55?"var(--accent2)":"var(--ink2)"}"></i></div></div>`}
+/* recent and season averages both well past the projection, against the pick: the role may have changed */
+function roleFlag(x){const s=_P.get(pk(x.player_id,x.game_id))?.stats?.[x.stat];
+  if(!s||s.proj==null||s.season==null||s.l10==null||s.proj<=0)return null;
+  const hi=s.season>s.proj*1.25&&s.l10>s.proj*1.25, lo=s.season<s.proj*.75&&s.l10<s.proj*.75;
+  if(hi&&x.side==="under")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well above the ${s.proj} projection. A bigger role may not be priced in yet.`;
+  if(lo&&x.side==="over")return `Averaging ${s.season} this season and ${s.l10} over the last 10, well below the ${s.proj} projection. A smaller role may not be priced in yet.`;
+  return null}
+const roleTag=x=>roleFlag(x)?` <span class="tag q" title="${esc(roleFlag(x))}">Role change</span>`:"";
+function lineMove(x){const o=(_P.get(pk(x.player_id,x.game_id))?.stats?.[x.stat]?.offers||[]).find(o=>o.book===x.book&&o.line===x.line);
+  return o&&o.open_line!=null&&o.open_line!==o.line?`<span class="mv" title="Line moved since it opened">opened ${o.open_line}</span>`:""}
 function pickRow(x,compact){
   const g=_G.get(x.game_id), h=x.hit_l10, hn=h&&h.n?(x.side==="over"?h.over:h.n-h.over):null;
   const diff=x.proj!=null?x.proj-x.line:null;
@@ -709,7 +769,7 @@ function pickRow(x,compact){
   return `<div class="prow ${compact?"cmp":""} ${isOpen?"open":""}" data-tg="${esc(id)}" title="Click for why the model likes this play">
    <div class="pc">${headshot(x.league,x.player_id,x.player,x.team_id)}<div style="min-width:0"><a class="pname" href="#/player/${pk(x.player_id,x.game_id)}">${esc(x.player)}</a>
     <div class="pmeta">${esc(abbr(x.league,x.team_id,x.team))} ${g&&g.home_id===x.team_id?"vs":"@"} ${esc(abbr(x.league,x.opp_id,x.opp))}${g?" · "+timeOf(g.date):""}${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}</div></div></div>
-   <div class="prop"><div class="pl">${esc(x.label)}</div><div><span class="side ${x.side}">${x.side==="over"?"Over":"Under"} ${x.line}</span></div></div>
+   <div class="prop"><div class="pl">${esc(x.label)}</div><div><span class="side ${x.side}">${x.side==="over"?"Over":"Under"} ${x.line}</span>${lineMove(x)}${roleTag(x)}</div></div>
    ${compact?"":`<div class="c xcol">${gradeBadge(x)}</div>`}
    <div class="hcell">${hitBar(x.p)}</div>
    ${compact?"":`<div class="r xcol"><b>${x.proj??"–"}</b><div class="pmeta ${diff==null?"":(x.side==="over"?diff>0:diff<0)?"pos":"neg"}">${diff==null?"":(diff>0?"+":"")+diff.toFixed(1)+" vs line"}</div></div>
@@ -736,6 +796,7 @@ function pickDetail(x){
    <div class="dcol">
     <div class="dt">Why ${over?"the over":"the under"}</div>
     <ul class="whylist">${w.pro.map(t=>`<li>${esc(t)}</li>`).join("")}${w.con.map(t=>`<li class="c">${esc(t)}</li>`).join("")}${!w.pro.length&&!w.con.length?`<li>Model projects ${s.proj}, ${Math.abs(diff).toFixed(1)} ${diff>0?"above":"below"} the line</li>`:""}</ul>
+    ${roleFlag(x)?`<p class="note warnline" style="margin:12px 0 0"><b>Role change:</b> ${esc(roleFlag(x))}</p>`:""}
     ${x.ev!=null&&x.ev<0?`<p class="note" style="margin:12px 0 0">Heads up: the model favors this side, but the price is steeper than its ${pct(x.p)} chance justifies (value ${evtxt(x.ev)}).</p>`:""}
    </div>
    <div class="dcol">
@@ -771,7 +832,7 @@ function emptyFor(){return league==="mlb"?"MLB is in its offseason. Plays return
 function pageToday(){
   const B=D.boards||{}, o=D.results?.overall||{}, gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const all=sortPicks(allPicks(),"value"), ov=all.filter(x=>x.side==="over"), un=all.filter(x=>x.side==="under");
-  const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg)), top=sheet[0]||all[0];
+  const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg)), top=sheet.find(x=>!roleFlag(x))||all.find(x=>!roleFlag(x))||sheet[0]||all[0];
   return `<div class="ph"><div><div class="eyebrow">${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"})}</div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1>
    <p>${gs.length} upcoming games · ${all.length} plays · odds refresh every ${D.refresh_minutes} minutes</p></div></div>
   ${notice()}
@@ -912,6 +973,8 @@ const saveSlip=()=>{lset("slip",JSON.stringify(slip));renderSlip()};
 /* ===== events ===== */
 document.addEventListener("click",e=>{
   const t=e.target, c=s=>t.closest(s);
+  if(c("[data-more]")){$("#more").classList.toggle("open");return}
+  if(!c("#more"))$("#more").classList.remove("open");
   if(c("#theme")){const th=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=th;lset("theme",th);return}
   if(c("[data-lg]")){league=c("[data-lg]").dataset.lg;lset("league",league);delete F.team;render();return}
   if(c("[data-add]")){e.preventDefault();e.stopPropagation();const l=JSON.parse(c("[data-add]").dataset.add);const i=slip.findIndex(x=>x.key===l.key);
