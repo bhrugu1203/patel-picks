@@ -13,6 +13,9 @@ from scipy.stats import nbinom
 from .data import STATS
 
 HALFLIFE = {"nba": (12, 6), "nfl": (6, 4), "nhl": (20, 8), "mlb": (40, 15)}  # (rate, exposure) in games
+# per-league tuning from backtests: recency (half-life multipliers), long-run memory, and how hard to shrink
+# small samples toward the position average. 1.0 / 5 = the original settings.
+TUNE = {lg: {"rate": 1.0, "expo": 1.0, "long": 5.0, "prior": 1.0} for lg in ("nba", "nfl", "nhl", "mlb")}
 PRIOR_EXPOSURE = {"min": 150, "pass_att": 80, "rush_att": 25, "tgt": 25, "touch": 30, "gp": 4,
                   "toi": 150, "sa": 250, "pa": 120, "bf": 120}
 
@@ -189,6 +192,8 @@ def stat_frame(ctx: dict, stat: str) -> pd.DataFrame:
     d.loc[d["expo"].isna(), "y"] = np.nan
 
     h_rate, h_expo = HALFLIFE[league]
+    tn = TUNE[league]
+    h_rate, h_expo = h_rate * tn["rate"], h_expo * tn["expo"]
     ew_r = ew_prior(d, "player_id", ["y", "expo"], h_rate)
     ew_e = ew_prior(d, "player_id", ["expo"], h_expo)
     n = d.groupby("player_id", sort=False)["y"].transform(lambda s: s.notna().cumsum().shift(1).fillna(0))
@@ -198,10 +203,10 @@ def stat_frame(ctx: dict, stat: str) -> pd.DataFrame:
     py = gy["y"].transform(lambda s: s.fillna(0).cumsum().shift(1))
     pe = gy["expo"].transform(lambda s: s.fillna(0).cumsum().shift(1))
     prior_rate = (py / pe).ffill().bfill()
-    m = PRIOR_EXPOSURE[expo]
+    m = PRIOR_EXPOSURE[expo] * tn["prior"]
     d["exp_hat"] = ew_e["expo"]
     # two-level shrinkage: recent form -> the player's own long-run rate -> position average
-    h_long = h_rate * 5
+    h_long = h_rate * tn["long"]
     ew_l = ew_prior(d, "player_id", ["y", "expo"], h_long)
     wl = effective_n(n, h_long)
     long_rate = (ew_l["y"] * wl + prior_rate * m) / (ew_l["expo"] * wl + m)
