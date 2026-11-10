@@ -255,6 +255,42 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 .statgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .sbox{padding:14px 16px} .sbox .v{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
 @media (max-width:1000px){.cols2{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(3,1fr)}.prow{grid-template-columns:auto minmax(0,1fr) auto auto}.prow .hideS{display:none}}
+
+/* ===== v4 polish ===== */
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.ph h1{margin-top:4px}
+.info{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink2);margin:-4px 0 18px}
+.info a{color:var(--accent);font-weight:600}
+.info .i{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--muted);display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--muted);flex:none;font-style:italic}
+.plist{overflow:hidden}
+.prow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1.4fr) 64px 150px 110px 90px 96px;gap:16px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line)}
+.prow.cmp{grid-template-columns:minmax(0,1.5fr) minmax(0,1.3fr) 110px 92px}
+.prow .pc{display:flex;align-items:center;gap:12px;min-width:0}
+.prow .pc>div:last-child{min-width:0}
+.prow .pname{font-size:15.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pmeta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .prop .pl{font-size:13px;color:var(--ink2);font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .c{text-align:center} .prow .r{text-align:right}
+.prow .odds{display:inline-flex;min-width:76px}
+.phead{padding:10px 20px;background:var(--panel2);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.phead:hover{background:var(--panel2)!important}
+.hitc{display:flex;align-items:center;gap:10px} .hitc b{font-size:16px;min-width:42px}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--line2);overflow:hidden} .bar i{display:block;height:100%;border-radius:3px}
+.grade{display:inline-grid;place-items:center;width:38px;height:30px;border-radius:8px;font-weight:900;font-size:14px;letter-spacing:-.02em}
+.grade.gAp{background:var(--accent);color:var(--accent-ink)} .grade.gA{background:var(--good-soft);color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.grade.gB{background:var(--panel3);color:var(--ink)} .grade.gC{background:var(--panel2);color:var(--muted)}
+.potd{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;padding:24px 26px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,var(--panel)) 0%,var(--panel) 55%);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+.potd .pname.big{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.potd-pick{margin-top:8px;font-size:16px;font-weight:600;color:var(--ink2)} .potd-pick .side{font-size:15px;padding:4px 10px}
+.potd .whylist{padding-top:16px}
+.potd-r{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:center}
+.potd-r .v.big{font-size:34px;font-weight:900;letter-spacing:-.03em}
+footer.site{max-width:1360px;margin:0 auto;padding:28px 24px 100px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between}
+@media (max-width:1100px){.prow{grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr) 48px 120px 90px}.prow>div:nth-child(5),.prow>div:nth-child(6){display:none}.phead>div:nth-child(5),.phead>div:nth-child(6){display:none}}
+@media (max-width:760px){.potd{grid-template-columns:1fr}.potd-r{grid-template-columns:1fr 1fr}
+ .prow,.prow.cmp{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"pc oc" "prop hc";row-gap:10px;column-gap:12px;padding:14px 16px}
+ .prow .pc{grid-area:pc}.prow .prop{grid-area:prop}.prow .hcell{grid-area:hc;width:130px}.prow .oc{grid-area:oc}
+ .prow .xcol{display:none}.phead{display:none}.prow .prop .pl{margin-bottom:3px}}
 </style>
 </head>
 <body>
@@ -266,6 +302,7 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 </div></header>
 <div class="sub-bar"><div class="sbwrap" id="sports"></div></div>
 <main id="main"></main>
+<footer class="site"><span>Patel Picks · model projections for entertainment and research. Odds and lines can change at any time; always check your sportsbook.</span><span>21+ · Gambling problem? Call 1-800-GAMBLER</span></footer>
 <button class="slipbtn" id="slipbtn">Bet slip <b id="slipn">0</b></button>
 <aside class="drawer" id="slip" aria-label="Bet slip"></aside>
 <script>
@@ -360,7 +397,6 @@ function pickCard(x){
   </div>`}
 
 /* ===== pages ===== */
-function notice(){return D.books_enabled?"":`<div class="notice"><span>ⓘ</span><span>Prices are DraftKings via ESPN. NFL props there carry lines without prices, so NFL picks show hit chance only. Add an Odds API key (see README) for live FanDuel, DraftKings, BetMGM and Caesars odds.</span></div>`}
 const kpi=(l,v,d)=>`<div class="panel kpi"><div class="lbl">${l}</div><div class="v">${v}</div><div class="d">${d||"&nbsp;"}</div></div>`;
 const rec=r=>r&&r.wins!=null?`${r.wins}-${r.losses}${r.pushes?"-"+r.pushes:""}`:"0-0";
 
@@ -625,53 +661,85 @@ const effLg=k=>league!=="all"?league:(F[k]||"nba");
 const fmtv=(c,v)=>v==null?"–":c==="sv_pct"||c==="avg_"?(+v).toFixed(3).replace(/^0/,""):c==="era"?(+v).toFixed(2):v;
 function addBtn(x){return x.price!=null?`<button class="odds add ${inSlip(x)?"on":""}" data-add='${esc(JSON.stringify(slim(x)))}' title="Add to bet slip">${odds(x.price)}<small>${esc(bk(x.book))}</small></button>`
   :`<span class="odds" title="The sportsbook posted this line without a price">—<small>No odds yet</small></span>`}
-function pickRow(x){
+/* ----- picks: one list per direction, priced plays first, unpriced lines (NFL) tagged ----- */
+function grade(x){
+  if(x.ev!=null)return x.ev>=.10&&x.p>=.55?"A+":x.ev>=.06?"A":x.ev>=.03?"B":"C";
+  return x.p>=.64?"A":x.p>=.58?"B":"C"}
+const gScore=x=>x.ev!=null?x.ev+.5*(x.p-.5):.6*(x.p-.5)-.02;
+const edgeOf=x=>x.proj==null||!x.line?0:(x.side==="over"?1:-1)*(x.proj-x.line)/Math.max(1,x.line);
+function allPicks(){
+  const B=D.boards||{}, pr=[...(B.overs||[]),...(B.unders||[])], seen=new Set(pr.map(x=>x.player_id+"|"+x.game_id));
+  return [...pr,...(B.leans||[]).filter(x=>!seen.has(x.player_id+"|"+x.game_id))].filter(inLg)}
+function sortPicks(r,how){const f={value:gScore,hit:x=>x.p,edge:edgeOf}[how||"value"];return [...r].sort((a,b)=>f(b)-f(a))}
+function gradeBadge(x){const g=grade(x);return `<span class="grade g${g.replace("+","p")}" title="Model grade: value against the price and hit chance">${g}</span>`}
+function hitBar(p){return `<div class="hitc"><b style="color:${confColor(p)}">${pct(p)}</b><div class="bar"><i style="width:${Math.round(p*100)}%;background:${p>=.6?"var(--good)":p>=.55?"var(--accent2)":"var(--ink2)"}"></i></div></div>`}
+function pickRow(x,compact){
   const g=_G.get(x.game_id), h=x.hit_l10, hn=h&&h.n?(x.side==="over"?h.over:h.n-h.over):null;
-  return `<div class="prow">${headshot(x.league,x.player_id,x.player,x.team_id)}
-   <div style="min-width:0"><a class="pname" href="#/player/${pk(x.player_id,x.game_id)}">${esc(x.player)}</a>
-    <div class="pmeta">${LGN[x.league]} · ${esc(abbr(x.league,x.team_id,x.team))} ${g&&g.home_id===x.team_id?"vs":"@"} ${esc(abbr(x.league,x.opp_id,x.opp))}${g?" · "+timeOf(g.date):""}${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}</div></div>
-   <div class="ln"><span class="side ${x.side}">${x.side==="over"?"Over":"Under"}</span> ${x.line}<small>${esc(x.label)}</small></div>
-   <div class="ch hideS" style="color:${confColor(x.p)}">${pct(x.p)}<small>Proj ${x.proj}${hn!=null?` · ${hn}/${h.n} L10`:""}</small></div>
-   ${addBtn(x)}</div>`}
-function pickList(title,items,badge,empty){
-  return `<div class="panel"><div class="listhd"><h3>${title}</h3>${badge||""}<span class="note" style="margin-left:auto">${items.length} plays</span></div>
-   ${items.length?items.map(pickRow).join(""):`<div class="empty">${empty||"Nothing qualifies right now."}</div>`}</div>`}
+  const diff=x.proj!=null?x.proj-x.line:null;
+  return `<div class="prow ${compact?"cmp":""}">
+   <div class="pc">${headshot(x.league,x.player_id,x.player,x.team_id)}<div style="min-width:0"><a class="pname" href="#/player/${pk(x.player_id,x.game_id)}">${esc(x.player)}</a>
+    <div class="pmeta">${esc(abbr(x.league,x.team_id,x.team))} ${g&&g.home_id===x.team_id?"vs":"@"} ${esc(abbr(x.league,x.opp_id,x.opp))}${g?" · "+timeOf(g.date):""}${x.status?` <span class="tag q">${esc(x.status)}</span>`:""}</div></div></div>
+   <div class="prop"><div class="pl">${esc(x.label)}</div><div><span class="side ${x.side}">${x.side==="over"?"Over":"Under"} ${x.line}</span></div></div>
+   ${compact?"":`<div class="c xcol">${gradeBadge(x)}</div>`}
+   <div class="hcell">${hitBar(x.p)}</div>
+   ${compact?"":`<div class="r xcol"><b>${x.proj??"–"}</b><div class="pmeta ${diff==null?"":(x.side==="over"?diff>0:diff<0)?"pos":"neg"}">${diff==null?"":(diff>0?"+":"")+diff.toFixed(1)+" vs line"}</div></div>
+   <div class="r xcol"><b>${hn!=null?`${hn}/${h.n}`:"–"}</b><div class="pmeta">last 10</div></div>`}
+   <div class="r oc">${addBtn(x)}</div></div>`}
+function pickHead(compact){return `<div class="prow phead ${compact?"cmp":""}"><div>Player</div><div>Prop</div>${compact?"":`<div class="c">Grade</div>`}<div>Hit chance</div>${compact?"":`<div class="r">Projection</div><div class="r">Hit rate</div>`}<div class="r">Odds</div></div>`}
+function pickList(title,items,badge,empty,compact,more){
+  return `<div class="panel plist"><div class="listhd"><h3>${title}</h3>${badge||""}<span class="note" style="margin-left:auto">${items.length} ${items.length===1?"play":"plays"}</span>${more||""}</div>
+   ${items.length?pickHead(compact)+items.map(x=>pickRow(x,compact)).join(""):`<div class="empty">${empty||"No plays clear the bar right now."}</div>`}</div>`}
 const OB=`<span class="badge side over">OVER</span>`, UB=`<span class="badge side under">UNDER</span>`;
+function notice(){
+  const lgs=league==="all"?["nfl"]:[league];
+  if(league==="mlb")return `<div class="info"><span class="i">i</span>MLB is in its offseason. Full 2026 stats for every team and player are under <a href="#/teams">Teams</a> and <a href="#/players">Players</a>.</div>`;
+  return D.books_enabled||!lgs.includes("nfl")?"":`<div class="info"><span class="i">i</span>NFL lines are posted before their odds, so NFL plays show the model's side and hit chance with “No odds yet” until prices appear.</div>`}
+function emptyFor(){return league==="mlb"?"MLB is in its offseason. Plays return in spring.":league==="nfl"?"No NFL lines are posted for this direction yet. Sunday lines usually appear midweek.":"No plays clear the bar right now."}
 
 function pageToday(){
-  const B=D.boards||{}, o=D.results?.overall||{}, sheet=(B.sheet||[]).filter(inLg), gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const ov=(B.overs||[]).filter(inLg), un=(B.unders||[]).filter(inLg), leans=(B.leans||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg));
-  const off=league==="mlb"&&!gs.length;
-  return `<div class="ph"><div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1><p>${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"})} · ${gs.length} upcoming games · odds refresh every ${D.refresh_minutes} minutes</p></div></div>
-  ${off?`<div class="notice"><span>ⓘ</span><span>MLB is in its offseason, so there are no games or props until spring. Full 2026 season stats for every team and player are under <a href="#/teams" style="color:var(--accent)">Teams</a> and <a href="#/players" style="color:var(--accent)">Players</a>.</span></div>`:notice()}
-  <div class="kpis">${kpi("Overs to play",ov.length,"best value overs")}${kpi("Unders to play",un.length,"best value unders")}${kpi("Record",rec(o),o.pending?`${o.pending} pending`:"graded automatically")}
+  const B=D.boards||{}, o=D.results?.overall||{}, gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const all=sortPicks(allPicks(),"value"), ov=all.filter(x=>x.side==="over"), un=all.filter(x=>x.side==="under");
+  const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg)), top=sheet[0]||all[0];
+  return `<div class="ph"><div><div class="eyebrow">${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"})}</div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1>
+   <p>${gs.length} upcoming games · ${all.length} plays · odds refresh every ${D.refresh_minutes} minutes</p></div></div>
+  ${notice()}
+  ${top?`<div class="potd panel"><div class="potd-l"><div class="eyebrow">Play of the day</div>
+     <div class="pc" style="margin-top:12px">${headshot(top.league,top.player_id,top.player,top.team_id,"av lg")}<div><a class="pname big" href="#/player/${pk(top.player_id,top.game_id)}">${esc(top.player)}</a>
+      <div class="pmeta">${LGN[top.league]} · ${esc(abbr(top.league,top.team_id,top.team))} vs ${esc(abbr(top.league,top.opp_id,top.opp))}</div>
+      <div class="potd-pick"><span class="side ${top.side}">${top.side==="over"?"Over":"Under"} ${top.line}</span> ${esc(top.label)}</div></div></div>
+     <ul class="whylist">${(top.why?.pro||[]).slice(0,3).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    <div class="potd-r"><div class="st"><div class="l">Hit chance</div><div class="v big" style="color:${confColor(top.p)}">${pct(top.p)}</div></div>
+     <div class="st"><div class="l">Projection</div><div class="v big">${top.proj}</div></div>
+     <div class="st"><div class="l">Grade</div><div class="v">${gradeBadge(top)}</div></div>
+     <div class="st"><div class="l">Odds</div><div class="v">${addBtn(top)}</div></div></div></div>`:""}
+  <div class="kpis" style="margin-top:16px">${kpi("Overs",ov.length,"plays today")}${kpi("Unders",un.length,"plays today")}${kpi("Record",rec(o),o.pending?`${o.pending} pending`:"graded automatically")}
    ${kpi("Units",o.units!=null?`<span class="${o.units>=0?"pos":"neg"}">${o.units>=0?"+":""}${o.units.toFixed(2)}</span>`:"0.00",o.roi!=null?`ROI ${(o.roi*100).toFixed(1)}%`:"1 unit per pick")}</div>
-  <div class="sec"><h2>Best overs and unders</h2><span class="sub">At least a 50% chance, ranked by value</span><a class="more" href="#/picks">See all picks →</a></div>
-  <div class="cols2">${pickList("Overs",ov.slice(0,8),OB,"No overs clear the bar right now.")}${pickList("Unders",un.slice(0,8),UB,"No unders clear the bar right now.")}</div>
-  ${sheet.length?`<div class="sec"><h2>Best bets</h2><span class="sub">Cleared the backtest bar</span><a class="more" href="#/picks">All best bets →</a></div><div class="cards">${sheet.slice(0,6).map(pickCard).join("")}</div>`:""}
-  ${leans.length?`<div class="sec"><h2>NFL model leans</h2><span class="sub">Lines posted without odds yet, ranked by hit chance</span><a class="more" href="#/picks">All leans →</a></div>
-   <div class="cols2">${pickList("Overs",leans.filter(x=>x.side==="over").slice(0,6),OB)}${pickList("Unders",leans.filter(x=>x.side==="under").slice(0,6),UB)}</div>`:""}
+  <div class="sec"><h2>Top overs and unders</h2><a class="more" href="#/picks">All picks →</a></div>
+  <div class="cols2">${pickList("Overs",ov.slice(0,6),OB,emptyFor(),true)}${pickList("Unders",un.slice(0,6),UB,emptyFor(),true)}</div>
+  ${sheet.length?`<div class="sec"><h2>Best bets</h2><span class="sub">Only plays at value levels that made money in the backtest</span><a class="more" href="#/picks">All best bets →</a></div><div class="cards">${sheet.slice(0,3).map(pickCard).join("")}</div>`:""}
   ${parl.length?`<div class="sec"><h2>Parlays</h2><a class="more" href="#/parlays">All parlays →</a></div><div class="cards">${parl.slice(0,3).map(parlayCard).join("")}</div>`:""}
-  ${gs.length?`<div class="sec"><h2>Games</h2><a class="more" href="#/games">Game center →</a></div><div class="gcards">${gs.slice(0,9).map(gameCard).join("")}</div>`:""}`}
+  ${gs.length?`<div class="sec"><h2>Games</h2><a class="more" href="#/games">Game center →</a></div><div class="gcards">${gs.slice(0,6).map(gameCard).join("")}</div>`:""}`}
 
 function pageBest(){
-  const B=D.boards||{}, t=F.best||"both";
-  const L_={both:null,best:(B.sheet||[]),overs:(B.overs||[]),unders:(B.unders||[]),leans:(B.leans||[]),value:(B.value||[])};
-  for(const k in L_)if(L_[k])L_[k]=L_[k].filter(inLg);
-  const tabs=[["both","Overs & unders"],["overs","Overs"],["unders","Unders"],["best","Best bets"],["leans","NFL leans"],["value","All value"]];
-  const cnt=k=>k==="both"?L_.overs.length+L_.unders.length:L_[k].length;
-  const pv=B.proven||{};
-  const desc={both:"The best play in each direction for every player with a line: at least a 50% chance, ranked by value against the price.",
-    overs:"Overs only, ranked by value against the price.",unders:"Unders only, ranked by value against the price.",
-    best:`The strictest list: only value levels that made money in each sport's backtest (${Object.entries(pv).map(([l,v])=>`${l.toUpperCase()} ${v==null?"none":"≥"+(v*100).toFixed(0)+"%"}`).join(", ")}). One per player, two per game at most.`,
-    leans:"Lines the sportsbook has posted without a price (mostly NFL). These show the model's side and hit chance; add an Odds API key for real prices.",
-    value:"Every play with positive expected value, including plus-money longshots."};
-  const body=t==="both"?`<div class="cols2">${pickList("Overs",L_.overs,OB)}${pickList("Unders",L_.unders,UB)}</div>`
-    :t==="best"||t==="value"?(L_[t].length?`<div class="cards">${L_[t].map(pickCard).join("")}</div>`:`<div class="panel empty">Nothing here for this sport right now.</div>`)
-    :t==="leans"?`<div class="cols2">${pickList("Overs",L_.leans.filter(x=>x.side==="over"),OB)}${pickList("Unders",L_.leans.filter(x=>x.side==="under"),UB)}</div>`
-    :pickList(t==="overs"?"Overs":"Unders",L_[t],t==="overs"?OB:UB);
-  return `<div class="ph"><div><h1>Picks</h1><p>${desc[t]}</p></div></div>
-  <div class="tabs">${tabs.map(([k,n])=>`<button data-set="best:${k}" class="${t===k?"on":""}">${n}<span class="c">${cnt(k)}</span></button>`).join("")}</div>${body}`}
+  const B=D.boards||{}, t=["all","overs","unders","best","value"].includes(F.best)?F.best:"all";
+  let all=allPicks(); const labels=[...new Set(all.map(x=>x.label))].sort();
+  if(F.pl)all=all.filter(x=>x.label===F.pl);
+  if(F.pq)all=all.filter(x=>(x.player+" "+x.team+" "+x.opp).toLowerCase().includes(F.pq));
+  all=sortPicks(all,F.ps);
+  const best=(B.sheet||[]).filter(inLg), value=(B.value||[]).filter(inLg);
+  const tabs=[["all","All picks",all.length],["overs","Overs",all.filter(x=>x.side==="over").length],["unders","Unders",all.filter(x=>x.side==="under").length],["best","Best bets",best.length],["value","Plus-money value",value.length]];
+  const desc={all:"Every player with a line, on the model's side. At least a 50% chance; priced plays need fair value against the odds.",overs:"Overs only.",unders:"Unders only.",
+    best:"The strictest list: only value levels that made money in each sport's backtest. One per player, two per game at most.",value:"Every play with positive expected value, including plus-money longshots under 50%."};
+  const list=t==="overs"?all.filter(x=>x.side==="over"):t==="unders"?all.filter(x=>x.side==="under"):all;
+  const body=t==="best"||t==="value"?((t==="best"?best:value).length?`<div class="cards">${(t==="best"?best:value).map(pickCard).join("")}</div>`:`<div class="panel empty">${league==="nfl"?"Best bets need real odds. NFL plays are in All picks until prices are posted.":emptyFor()}</div>`)
+    :pickList(t==="overs"?"Overs":t==="unders"?"Unders":"All picks",list,t==="overs"?OB:t==="unders"?UB:"",emptyFor());
+  return `<div class="ph"><div><h1>Picks</h1><p>${desc[t]}</p></div></div>${notice()}
+  <div class="tabs">${tabs.map(([k,n,c])=>`<button data-set="best:${k}" class="${t===k?"on":""}">${n}<span class="c">${c}</span></button>`).join("")}</div>
+  ${t==="best"||t==="value"?"":`<div class="filters"><label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input data-f="pq" placeholder="Search player or team" value="${esc(F.pq||"")}"></label>
+   <select data-f="pl"><option value="">All prop types</option>${labels.map(l=>`<option ${F.pl===l?"selected":""}>${esc(l)}</option>`).join("")}</select>
+   <div class="seg">${[["value","Best value"],["hit","Highest hit %"],["edge","Biggest edge"]].map(([k,n])=>`<button data-set="ps:${k}" class="${(F.ps||"value")===k?"on":""}">${n}</button>`).join("")}</div></div>`}
+  ${body}
+  <p class="note" style="margin-top:12px">Grade combines value against the price with hit chance: A+ is 10%+ expected value with at least a 55% chance. Plays without odds are graded on hit chance alone.</p>`}
 
 function sportTabs(key){return league!=="all"?"":`<div class="seg" style="margin-bottom:16px">${["nfl","nba","nhl","mlb"].map(l=>`<button data-set="${key}:${l}" class="${effLg(key)===l?"on":""}">${LGN[l]}</button>`).join("")}</div>`}
 function pageTeams(){
