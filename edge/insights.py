@@ -241,35 +241,96 @@ def to_american(dec: float) -> int:
     return int(round((dec - 1) * 100)) if dec >= 2 else int(round(-100 / (dec - 1)))
 
 
-def parlays(picks: list[dict], likely: list[dict]) -> list[dict]:
+def leg_key(x: dict) -> tuple:
+    """Same bet at any sportsbook: game, player, stat, side and line."""
+    return (x["game_id"], x["player_id"], x["stat"], x["side"], x["line"])
+
+
+def book_prices(rows: list[dict]) -> dict[tuple, dict[str, float]]:
+    """Every sportsbook's price for each bet, keyed by leg_key and then by book name as the
+    feed spells it. ESPN's DraftKings copy and The Odds API's draftkings are the same book,
+    so only the first of the two is kept."""
+    out: dict[tuple, dict[str, float]] = {}
+    for x in rows:
+        if x.get("price") is None or not x.get("book"):
+            continue
+        m = out.setdefault(leg_key(x), {})
+        if str(x["book"]).lower() not in {b.lower() for b in m}:
+            m[str(x["book"])] = float(x["price"])
+    return out
+
+
+def price_at_books(legs: list[dict], prices: dict[tuple, dict[str, float]] | None) -> list[dict]:
+    """A parlay has to be placed at one sportsbook, so price it at every book that offers all
+    of its legs at the same line. Best payout first. Without a price map, each leg's own book
+    and price are used, which only counts when every leg is at that one book.
+
+    Each quote keeps, per leg, the book name as that leg's feed spells it and its price, so the
+    pick tracker can still follow the leg's closing line."""
+    per_leg = []
+    for c in legs:
+        m = {b.lower(): (b, px) for b, px in ((prices or {}).get(leg_key(c), {})).items()}
+        if c.get("price") is not None and c.get("book"):
+            m.setdefault(str(c["book"]).lower(), (str(c["book"]), float(c["price"])))
+        per_leg.append(m)
+    if not per_leg:
+        return []
+    common = set(per_leg[0]).intersection(*per_leg[1:])
+    out = []
+    for b in common:
+        dec = math.prod(decimal(m[b][1]) for m in per_leg)
+        out.append({"book": per_leg[0][b][0], "decimal": round(dec, 3), "price": to_american(dec),
+                    "legs": [m[b] for m in per_leg]})
+    out.sort(key=lambda r: -r["decimal"])
+    return out
+
+
+def parlays(picks: list[dict], likely: list[dict], prices: dict | None = None) -> list[dict]:
     """Suggested parlays. Legs come from different games so they're close to independent;
     the joint chance is the product of each leg's calibrated chance. Books price same-game
-    parlays with their own correlation adjustments, so those are left to the manual builder."""
+    parlays with their own correlation adjustments, so those are left to the manual builder.
+
+    Each parlay is priced at the single sportsbook that pays the most for the whole ticket,
+    since legs can't be mixed across books, and the other books' prices are kept to compare."""
     out = []
 
-    def build(name, desc, pool, n, key):
+    def build(name, desc, pool, n, key, all_pos=False):
         pool = [x for x in pool if x.get("price") is not None]
         best = None
-        for combo in itertools.combinations(pool[:14], n):
+        for combo in itertools.combinations(pool[:20], n):
             if len({c["game_id"] for c in combo}) < n or len({c["player_id"] for c in combo}) < n:
                 continue
+            quotes = price_at_books(list(combo), prices)
+            if all_pos:  # value parlays: every leg has to stay +EV at the book the ticket is placed at
+                quotes = [q for q in quotes if all(c["p"] * decimal(px) > 1 for c, (_, px) in zip(combo, q["legs"]))]
+            if not quotes:  # no single book offers every leg
+                continue
             p = math.prod(c["p"] for c in combo)
-            dec = math.prod(decimal(c["price"]) for c in combo)
+            dec = quotes[0]["decimal"]
             ev = p * dec - 1
             score = key(p, ev)
             if best is None or score > best[0]:
-                best = (score, combo, p, dec, ev)
+                best = (score, combo, p, quotes, ev)
         if best:
-            _, combo, p, dec, ev = best
-            out.append({"name": name, "desc": desc, "legs": [dict(c) for c in combo], "p": p,
-                        "price": to_american(dec), "decimal": round(dec, 2), "ev": ev})
+            _, combo, p, quotes, ev = best
+            top = quotes[0]
+            legs = []
+            for c, (bk, px) in zip(combo, top["legs"]):
+                leg = dict(c)
+                leg["book"], leg["price"] = bk, px
+                leg["ev"] = c["p"] * decimal(px) - 1
+                legs.append(leg)
+            out.append({"name": name, "desc": desc, "legs": legs, "p": p, "book": top["book"],
+                        "price": top["price"], "decimal": round(top["decimal"], 2), "ev": ev,
+                        "compare": [{"book": q["book"], "price": q["price"], "decimal": round(q["decimal"], 2)}
+                                    for q in quotes[:6]]})
 
     value = [x for x in picks if x["ev"] > 0]
     safe = sorted([x for x in likely if x.get("ev") is not None and x["ev"] > -0.01 and x["price"] is not None],
                   key=lambda x: -x["p"])
     build("Safest 2-leg", "The two highest-probability legs from different games that aren't losing bets at their price.",
           safe, 2, lambda p, ev: p)
-    build("Value 2-leg", "Two of the strongest proven-value picks.", value, 2, lambda p, ev: ev)
-    build("Value 3-leg", "Three proven-value picks from different games.", value, 3, lambda p, ev: ev)
-    build("Longshot 4-leg", "Bigger payout, lower hit rate. Every leg is +EV on its own.", value, 4, lambda p, ev: ev)
+    build("Value 2-leg", "Two of the strongest proven-value picks.", value, 2, lambda p, ev: ev, True)
+    build("Value 3-leg", "Three proven-value picks from different games.", value, 3, lambda p, ev: ev, True)
+    build("Longshot 4-leg", "Bigger payout, lower hit rate. Every leg is +EV on its own.", value, 4, lambda p, ev: ev, True)
     return out
