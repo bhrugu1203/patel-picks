@@ -460,6 +460,48 @@ def _fmt_line(x):
     return f"+{x:g}" if x > 0 else f"{x:g}"
 
 
+def _pair_corr(a: list, b: list, a_team: str, b_team: str, same_team: bool, k: int = 20):
+    """How two stat lines from one game have moved together: the correlation of their values on
+    the dates both were recorded, shrunk toward zero by k games so thin samples count for little.
+    Opponents only count games against each other. Returns (r, games) or None."""
+    if not same_team:
+        a = [x for x in a if x[1] == b_team]
+        b = [x for x in b if x[1] == a_team]
+    da, db = {d: v for d, _, v in a}, {d: v for d, _, v in b}
+    common = sorted(set(da) & set(db))
+    n = len(common)
+    if n < 6:
+        return None
+    x, y = np.array([da[d] for d in common], float), np.array([db[d] for d in common], float)
+    if x.std() == 0 or y.std() == 0:
+        return None
+    r = float(np.corrcoef(x, y)[0, 1]) * n / (n + k)
+    return (round(r, 3), n) if abs(r) >= 0.05 else None
+
+
+def same_game_corr(items: list[dict], pmap: dict) -> dict:
+    """Correlations between every pair of bets on the board that share a game (same player's
+    other stats, teammates, opponents), keyed "game|player|stat~game|player|stat" in sorted order.
+    The bet slip uses them to adjust the chance that same-game legs all hit."""
+    by_game: dict = {}
+    for x in items:
+        by_game.setdefault(x["game_id"], set()).add((x["player_id"], x["stat"]))
+    out = {}
+    for gid, legs in by_game.items():
+        legs = sorted(legs, key=str)
+        for i, (pa, sa) in enumerate(legs):
+            for pb, sb in legs[i + 1:]:
+                A, B = pmap.get((pa, gid)), pmap.get((pb, gid))
+                if not A or not B:
+                    continue
+                la, lb = A[1]["stats"].get(sa, {}).get("log") or [], B[1]["stats"].get(sb, {}).get("log") or []
+                c = _pair_corr(la, lb, A[1]["team"], B[1]["team"], A[1]["team_id"] == B[1]["team_id"])
+                if c:
+                    ka, kb = f"{gid}|{pa}|{sa}", f"{gid}|{pb}|{sb}"
+                    out["~".join(sorted((ka, kb)))] = c
+    return out
+
+
 def boards(priced: list[dict], top: int = 25) -> dict:
     """Bet sheet (value), most-likely list, and game edges across leagues.
 
@@ -563,4 +605,5 @@ def boards(priced: list[dict], top: int = 25) -> dict:
         if bp and len(bp) > 1:  # every book's price for this exact bet, so the slip can compare them
             x["books"] = bp
     return {"sheet": sheet, "value": value, "likely": lk, "leans": ln, "overs": overs, "unders": unders, "game_edges": games[:40],
-            "proven": proven, "parlays": I.parlays(sheet, lk, prices)}
+            "proven": proven, "parlays": I.parlays(sheet, lk, prices),
+            "corr": same_game_corr(sheet + value + lk + ln + overs + unders, pmap)}

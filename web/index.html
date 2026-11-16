@@ -990,26 +990,45 @@ function priceAlerts(){
   for(const [l,m] of up){const k=l.key+"|"+m.now;if(alerted[k])continue;alerted[k]=1;
     try{new Notification("Better odds on your slip",{body:`${l.player} ${l.side==="over"?"Over":"Under"} ${l.line} ${l.label}: ${odds(l.price)} → ${odds(m.now)} at ${bk(l.book)}`})}catch(e){}}
   lset("alerted",JSON.stringify(alerted))}
+/* normal distribution helpers for same-game legs */
+const ncdf=x=>{const t=1/(1+.2316419*Math.abs(x)),d=.3989423*Math.exp(-x*x/2),q=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return x>0?1-q:q};
+function ninv(p){p=Math.min(Math.max(p,1e-6),1-1e-6);const a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924],
+  b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857],c=[-.00778489400243029,-.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878],
+  d=[.00778469570904146,.32246712907004,2.445134137143,3.75440866190742],lo=.02425;let q,r;
+  if(p<lo){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+  if(p>1-lo){q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+  q=p-.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)}
+/* P(X<=h, Y<=k) for standard normals with correlation rho: Phi(h)Phi(k) plus the integral of the joint density over 0..rho */
+function bvn(h,k,rho){rho=Math.max(-.95,Math.min(.95,rho));const n=40,f=t=>Math.exp(-(h*h-2*t*h*k+k*k)/(2*(1-t*t)))/(2*Math.PI*Math.sqrt(1-t*t));
+  let s=f(0)+f(rho);for(let i=1;i<n;i++)s+=(i%2?4:2)*f(rho*i/n);return ncdf(h)*ncdf(k)+s*rho/(3*n)}
+/* chance every leg hits: independent legs multiply; each same-game pair is adjusted by how those two
+   stat lines moved together in past games (a Gaussian copula on the pair), from the board's corr table */
+function slipChance(legs){
+  const C=(D&&D.boards&&D.boards.corr)||{}, sg=l=>l.side==="over"?1:-1;let p=legs.reduce((a,l)=>a*(l.p||0),1), used=0, n=0;
+  for(let i=0;i<legs.length;i++)for(let j=i+1;j<legs.length;j++){const A=legs[i],B=legs[j];if(A.game_id!==B.game_id||!A.p||!B.p)continue;
+    const ka=[A.game_id,A.player_id,A.stat].join("|"),kb=[B.game_id,B.player_id,B.stat].join("|"),r=C[[ka,kb].sort().join("~")];if(!r)continue;
+    const pij=bvn(ninv(A.p),ninv(B.p),r[0]*sg(A)*sg(B));p*=pij/(A.p*B.p);used++;n+=r[1]}
+  const cap=Math.min(...legs.map(l=>l.p||0));return {p:Math.max(0,Math.min(p,cap)),used,games:used?Math.round(n/used):0}}
 function renderSlip(openIt){
   const el=$("#slip"); if(openIt!==undefined)el.classList.toggle("open",openIt);
-  const pr=slip.filter(l=>l.price!=null), p=slip.reduce((a,l)=>a*(l.p||0),1), stake=+ls("stake","10")||10;
+  const pr=slip.filter(l=>l.price!=null), SC=slipChance(slip), p=SC.p, stake=+ls("stake","10")||10;
   const Q=pr.length===slip.length?slipQuotes(slip):[], mixed=slip.length>1&&pr.length===slip.length&&!Q.length;
   const d=Q.length?Q[0].d:pr.reduce((a,l)=>a*dec(l.price),1), ev=p*d-1;
-  const kelly=Q.length&&ev>0&&d>1?ev/(d-1)/4:0;
-  const same=new Set(slip.map(l=>l.game_id)).size<slip.length, mv=slipMoves(), moved=mv.some(Boolean);
+  const same=new Set(slip.map(l=>l.game_id)).size<slip.length;
+  const kelly=Q.length&&!same&&ev>0&&d>1?ev/(d-1)/4:0, mv=slipMoves(), moved=mv.some(Boolean);
   const alertsOn=ls("alerts","0")==="1"&&"Notification" in window&&Notification.permission==="granted";
   el.innerHTML=`<div class="dh"><b style="font-size:16px">Bet slip</b><span class="tag gray">${slip.length}</span><button class="x" data-close>Close</button></div>
   <div class="db">${slip.length?slip.map((l,i)=>`<div class="leg">${headshot(l.league,l.player_id,l.player,l.team_id)}<div style="min-width:0;flex:1"><b>${esc(l.player)}</b>
     <div class="note"><span class="${l.side==="over"?"pos":"neg"}" style="font-weight:700">${l.side==="over"?"Over":"Under"} ${l.line}</span> ${esc(l.label)}</div><div class="note">${esc(bk(l.book))} ${odds(l.price)} · ${pct(l.p)} chance</div>${mv[i]?`<div class="note ${mv[i].dir>0?"pos":"neg"}" style="font-weight:700">${mv[i].dir>0?"Better odds now":"Odds got worse"}: ${odds(mv[i].now)}</div>`:""}</div>
     <button class="rm" data-rm="${i}" aria-label="Remove leg">×</button></div>`).join(""):`<div class="empty">Tap any price on the site to add it here.</div>`}
    ${moved?`<div class="notice" style="margin-top:14px"><span>↕</span><span>Prices have moved since you added these legs. <a href="#" data-reprice style="color:var(--accent);font-weight:700">Use today's prices</a></span></div>`:""}
-   ${same?`<div class="notice" style="margin-top:14px"><span>!</span><span>Some legs share a game. They're correlated, so the combined chance is rough and the book's same-game price will differ.</span></div>`:""}
+   ${same?`<div class="notice" style="margin-top:14px"><span>!</span><span>Some legs share a game, so they're correlated. ${SC.used?`The chance all hit is adjusted for how these stats have moved together (about ${SC.games} past games per pair).`:"There's no past data on how these legs move together, so the chance all hit is rough."} Books price same-game parlays their own way, so check the book's odds before betting.</span></div>`:""}
    ${mixed?`<div class="notice" style="margin-top:14px"><span>!</span><span>No single sportsbook has every one of these legs, and a parlay has to be placed at one book. The odds shown mix books.</span></div>`:""}
    ${slip.length&&pr.length<slip.length?`<div class="notice" style="margin-top:14px"><span>ⓘ</span><span>Legs without a price (NFL without an Odds API key) are left out of the payout.</span></div>`:""}</div>
   ${slip.length?`<div class="df"><div class="kv"><span>Chance all hit</span><span>${pct(p,1)}</span><span>Odds</span><span>${pr.length?odds(toAm(d)):"–"}${Q.length?` <small class="muted">${esc(bk(Q[0].book))}</small>`:""}</span>
    <span>Stake</span><span><input type="number" min="1" value="${stake}" data-stake style="width:90px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit"></span>
    <span>To win</span><span class="pos">$${(stake*(d-1)).toFixed(2)}</span><span>Expected value</span><span>${pr.length===slip.length?evtxt(ev):"–"}</span>
-   ${Q.length?`<span>Suggested stake</span><span>${kelly>0?`${(100*Math.min(kelly,.05)).toFixed(1)}% of bankroll`:`Skip, it's not +EV`}</span>`:""}</div>
+   ${Q.length?`<span>Suggested stake</span><span>${same?"Check the book's same-game price first":kelly>0?`${(100*Math.min(kelly,.05)).toFixed(1)}% of bankroll`:`Skip, it's not +EV`}</span>`:""}</div>
    ${Q.length>1?`<div class="note" style="margin-top:10px">${Q.slice(1,5).map(r=>`${esc(bk(r.book))} ${odds(toAm(r.d))}`).join(" · ")}</div>`:""}
    ${"Notification" in window?`<button class="btn" style="margin-top:14px" data-alerts>${alertsOn?"Odds alerts on":"Alert me when odds get better"}</button>`:""}
    <button class="btn" style="margin-top:14px" data-clear>Clear slip</button></div>`:""}`;
