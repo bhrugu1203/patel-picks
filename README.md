@@ -40,6 +40,9 @@ the Actions tab (Update board → Run workflow).
 - **Bad fetches.** A schedule that can't be downloaded is an error, never "no games". If a
   league fails to update, or comes back with most of its players missing, the last good board
   for that league (up to 12 hours old, games already started removed) is shown instead.
+- **Play of the day record.** Every locked play of the day is kept and graded from the same box
+  scores as the pick record, at the line and odds it was locked at, so the Home card shows an
+  honest win-loss and units record with the last five results. Replaced picks never count.
 
 ## Sportsbook prices
 
