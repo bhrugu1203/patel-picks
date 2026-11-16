@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
-from . import books, data as D, ingest, insights as I, players as P, pricing as X, teams as T
+from . import books, data as D, ingest, insights as I, lock as L_, players as P, pricing as X, teams as T
 from .ingest import ROOT
 
 warnings.filterwarnings("ignore")
@@ -58,10 +58,15 @@ def _ts(s: str) -> pd.Timestamp:
 
 
 def fetch_upcoming(league: str) -> list[dict]:
+    """Every game still to start over the next few days (US Eastern dates).
+
+    Raises if any day's schedule could not be downloaded, so a failed fetch is never
+    mistaken for a day with no games (which would wipe those games off the board).
+    """
     today = _now_et().date()
     out = []
     for i in range(LOOKAHEAD[league]):
-        out += ingest.fetch_slate(league, today + dt.timedelta(days=i))
+        out += ingest.fetch_slate(league, today + dt.timedelta(days=i), strict=True)
     seen, uniq = set(), []
     for g in out:
         if g["game_id"] not in seen:
@@ -273,7 +278,10 @@ def price(state: dict, refresh_lines: bool = True, book_rows: pd.DataFrame | Non
     calib = _calibration()
     names = _team_name(state)
     proj = state["proj"]
-    out = {"league": league, "projected_at": state.get("projected_at"), "games": [], "players": []}
+    out = {"league": league, "projected_at": state.get("projected_at"), "games": [], "players": [],
+           "game_dates": {g["game_id"]: g["date"] for g in state["slate"]},
+           "ruled_out": sorted(pid for pid, v in (state.get("injuries") or {}).items()
+                               if (v.get("status") or "").lower() in SKIP_STATUS)}
     if not state["slate"]:
         return out
     started = {g["game_id"] for g in state["slate"]}
@@ -398,7 +406,8 @@ def price(state: dict, refresh_lines: bool = True, book_rows: pd.DataFrame | Non
                             "pick": la if side_a else lb, "ev": ev,
                             "score": edge_score(ev, res["p_over"] if side_a else res["p_under"])})
         out["games"].append({
-            "game_id": g["game_id"], "date": g["date"], "home": g["home_name"], "away": g["away_name"],
+            "game_id": g["game_id"], "date": g["date"], "game_day": L_.game_day(g["date"]),
+            "home": g["home_name"], "away": g["away_name"],
             "home_id": g["home_id"], "away_id": g["away_id"],
             "proj_home": round(float(t.lam_h), 1), "proj_away": round(float(t.lam_a), 1),
             "sd_margin": float(t.sd_margin),
@@ -469,6 +478,7 @@ def boards(priced: list[dict], top: int = 25) -> dict:
     proven = proven_thresholds()
     value, likely, leans = [], [], []
     pmap = {(p["player_id"], p["game_id"]): (lg["league"], p) for lg in priced for p in lg["players"]}
+    starts = {gid: d for lg in priced for gid, d in (lg.get("game_dates") or {}).items()}
 
     def explain(x):
         lgname, p = pmap[(x["player_id"], x["game_id"])]
@@ -487,7 +497,8 @@ def boards(priced: list[dict], top: int = 25) -> dict:
                     base = {"league": lg["league"], "player": p["name"], "team": p["team"], "opp": p["opp"],
                             "game_id": p["game_id"], "player_id": p["player_id"], "stat": stat, "label": s["label"],
                             "proj": s["proj"], "line": o["line"], "book": o["book"], "status": p["status"],
-                            "team_id": p["team_id"], "opp_id": p["opp_id"], "pos": p["pos"]}
+                            "team_id": p["team_id"], "opp_id": p["opp_id"], "pos": p["pos"],
+                            "start": starts.get(p["game_id"]), "game_day": L_.game_day(starts.get(p["game_id"]))}
                     if o.get("side"):
                         side = o["side"]
                         evv = o["ev_" + side]

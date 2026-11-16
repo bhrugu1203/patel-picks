@@ -26,6 +26,21 @@ Actions cache, with a daily backup on the `db` release. To use real sportsbook p
 add `ODDS_API_KEY` under Settings → Secrets and variables → Actions. Run an update by hand from
 the Actions tab (Update board → Run workflow).
 
+## How the board stays steady
+
+- **Game days.** Every pick, game and play of the day belongs to the calendar date its game is
+  played, in US Eastern time. The site shows one section per game day, nearest first: on a
+  Monday with only a Tuesday NFL game, Tuesday's game is what you see; on a Sunday with Sunday
+  and Monday games, Sunday and Monday are separate sections.
+- **Locked play of the day.** It is picked once per game day (the best play on the nearest day
+  that still has games to start) and saved in the database. Later updates don't swap it. It is
+  only replaced before its game starts if the player is ruled out, the game moves to another
+  day, or the game or prop is missing from two updates in a row. After kickoff it stays for the
+  rest of that day. See `edge/lock.py`.
+- **Bad fetches.** A schedule that can't be downloaded is an error, never "no games". If a
+  league fails to update, or comes back with most of its players missing, the last good board
+  for that league (up to 12 hours old, games already started removed) is shown instead.
+
 ## Sportsbook prices
 
 ESPN's free feed carries DraftKings lines and prices for NBA, NHL and MLB props and all game lines.

@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 
-from . import books, ingest, slate as S, stats as ST, tracker
+from . import books, ingest, lock as LK, slate as S, stats as ST, tracker
 from .ingest import ROOT
 
 WEB = ROOT / "web"
@@ -159,6 +159,16 @@ def main(argv=None):
             except Exception:
                 status[lg] = "pricing failed: " + traceback.format_exc(limit=1).strip().splitlines()[-1]
 
+        # a league that failed to update, or came back mostly empty, keeps its last good board
+        try:
+            priced, fallback = LK.guard(priced, leagues)
+            for lg in leagues:
+                status.pop(lg + "_board", None)
+            for lg, msg in fallback.items():
+                status[lg + "_board"] = msg
+        except Exception as e:
+            print("board guard failed:", e, flush=True)
+
         now = dt.datetime.now(S.ET)
         if not priced and (WEB / "slate.json").exists():
             # still projecting at startup: keep showing the last board rather than an empty one
@@ -169,11 +179,16 @@ def main(argv=None):
             tracker.record(boards, priced)
         except Exception as e:
             print("tracker record failed:", e, flush=True)
+        try:
+            potd = LK.pick_of_day(boards, priced)
+        except Exception as e:
+            print("pick of the day failed:", e, flush=True)
+            potd = {}
         write_json({
             "generated": now.isoformat(timespec="seconds"),
             "next_refresh": (now + dt.timedelta(minutes=a.every)).isoformat(timespec="seconds"),
             "refresh_minutes": a.every, "status": status, "leagues": priced,
-            "boards": boards, "backtest": backtest_summary(), "results": _safe(tracker.summary),
+            "boards": boards, "potd": potd, "backtest": backtest_summary(), "results": _safe(tracker.summary),
             "books_enabled": bool(books.api_key()),
         })
         print(f"{now:%H:%M:%S} priced {sum(len(p['players']) for p in priced)} players, "
