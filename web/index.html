@@ -301,6 +301,9 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 .potd .pname.big{font-size:24px;font-weight:800;letter-spacing:-.02em}
 .dayhd{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;font-size:15px;font-weight:800;letter-spacing:-.01em} .dayhd .n{color:var(--muted);font-weight:600;font-size:13px}
 .locknote{margin-top:10px;font-size:12.5px;color:var(--muted);font-weight:600}
+.potdrec{margin-top:8px;font-size:13px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.potdrec .dots{display:inline-flex;gap:4px} .potdrec .dots i{width:9px;height:9px;border-radius:50%;background:var(--line2)}
+.potdrec .dots i.win{background:var(--good)} .potdrec .dots i.loss{background:#ff6b6b}
 .potd-pick{margin-top:8px;font-size:16px;font-weight:600;color:var(--ink2)} .potd-pick .side{font-size:15px;padding:4px 10px}
 .potd .whylist{padding-top:16px}
 .potd-r{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:center}
@@ -865,6 +868,11 @@ function notice(){
   return D.books_enabled||!lgs.includes("nfl")?"":`<div class="info"><span class="i">i</span>NFL lines are posted before their odds, so NFL plays show the model's side and hit chance with “No odds yet” until prices appear.</div>`}
 function emptyFor(){return league==="mlb"?"MLB is in its offseason. Plays return in spring.":league==="nfl"?"No NFL lines are posted for this direction yet. Sunday lines usually appear midweek.":"No plays clear the bar right now."}
 
+/* record of every locked play of the day, graded at the line and price it was locked at */
+function potdRec(){const r=D.potd_record?.[league]; if(!r||!(r.wins+r.losses+r.pushes))return "";
+  const done=(r.recent||[]).filter(x=>x.result==="win"||x.result==="loss"||x.result==="push").slice(0,5).reverse();
+  return `<div class="potdrec">Play of the day record <b>${r.wins}-${r.losses}${r.pushes?"-"+r.pushes:""}</b>${r.priced?` · ${units(r.units)}`:""}
+    <span class="dots" title="Last ${done.length}, oldest first">${done.map(x=>`<i class="${x.result}" title="${esc(x.day+": "+x.player+" "+(x.side==="over"?"Over":"Under")+" "+x.line+" "+x.label+" ("+x.result+(x.actual!=null?", "+x.actual:"")+")")}"></i>`).join("")}</span></div>`}
 function pageToday(){
   const B=D.boards||{}, o=D.results?.overall||{}, gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const all=sortPicks(allPicks(),"value"), ov=all.filter(x=>x.side==="over"), un=all.filter(x=>x.side==="under");
@@ -880,6 +888,7 @@ function pageToday(){
       <div class="pmeta">${LGN[top.league]} · ${esc(abbr(top.league,top.team_id,top.team))} vs ${esc(abbr(top.league,top.opp_id,top.opp))}</div>
       <div class="potd-pick"><span class="side ${top.side}">${top.side==="over"?"Over":"Under"} ${top.line}</span> ${esc(top.label)}</div></div></div>
      <ul class="whylist">${(top.why?.pro||[]).slice(0,3).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+     ${potdRec()}
      ${locked?`<div class="locknote">${top.started?"Game under way · ":""}Locked ${new Date(top.locked_at).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})}${top.start?` · ${timeOf(top.start)} start`:""}</div>`:""}</div>
     <div class="potd-r"><div class="st"><div class="l">Hit chance</div><div class="v big" style="color:${confColor(top.p)}">${pct(top.p)}</div></div>
      <div class="st"><div class="l">Projection</div><div class="v big">${top.proj}</div></div>

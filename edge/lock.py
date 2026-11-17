@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import sqlite3
 from zoneinfo import ZoneInfo
 
+from . import pricing as X
 from .ingest import connect
 
 ET = ZoneInfo("America/New_York")
@@ -263,10 +265,55 @@ def pick_of_day(boards: dict, priced: list[dict], now: dt.datetime | None = None
         con.execute("INSERT OR REPLACE INTO potd(scope, day, chosen, pick, misses, replaced) VALUES(?,?,?,?,0,?)",
                     (scope, pick["game_day"], chosen, json.dumps(pick, default=_json_default), replaced))
         out[scope] = {**pick, "locked_at": chosen, "replaced": replaced}
-    con.execute("DELETE FROM potd WHERE day < ?", ((now - dt.timedelta(days=30)).astimezone(ET).date().isoformat(),))
     con.commit()
     con.close()
     for v in out.values():
         t = _when(v.get("start"))
         v["started"] = bool(t and t <= now)
+    return out
+
+
+def potd_record(recent: int = 10) -> dict:
+    """Win-loss record of every locked play of the day, per scope, graded at the line and price
+    it was locked at (the same box scores the pick record uses). Replaced picks don't count."""
+    con = _con()
+    rows = con.execute("SELECT scope, day, pick FROM potd ORDER BY day DESC").fetchall()
+    try:
+        graded = {(g, p, s): (a, r) for g, p, s, a, r in con.execute(
+            "SELECT game_id, player_id, stat, actual, result FROM picks WHERE result IS NOT NULL")}
+    except sqlite3.OperationalError:  # no pick record yet
+        graded = {}
+    con.close()
+    out = {}
+    for scope, day, body in rows:
+        x = json.loads(body)
+        actual, res = graded.get((x["game_id"], x["player_id"], x["stat"]), (None, None))
+        if res is None:
+            result = None  # game not final yet
+        elif res == "void" or actual is None:
+            result = "void"
+        elif actual == x["line"]:
+            result = "push"
+        else:
+            result = "win" if (actual > x["line"]) == (x["side"] == "over") else "loss"
+        price = x.get("price")
+        profit = None
+        if result in ("push", "void"):
+            profit = 0.0
+        elif result and price is not None:
+            profit = float(X.payout(price)) if result == "win" else -1.0
+        rec = out.setdefault(scope, {"wins": 0, "losses": 0, "pushes": 0, "units": 0.0, "priced": 0, "recent": []})
+        if result == "win":
+            rec["wins"] += 1
+        elif result == "loss":
+            rec["losses"] += 1
+        elif result == "push":
+            rec["pushes"] += 1
+        if result in ("win", "loss") and profit is not None:
+            rec["units"] = round(rec["units"] + profit, 2)
+            rec["priced"] += 1
+        if len(rec["recent"]) < recent:
+            rec["recent"].append({"day": day, "league": x["league"], "player": x["player"], "label": x["label"],
+                                  "side": x["side"], "line": x["line"], "price": price, "actual": actual,
+                                  "result": result})
     return out

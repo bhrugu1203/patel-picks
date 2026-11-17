@@ -188,7 +188,8 @@ def main(argv=None):
             "generated": now.isoformat(timespec="seconds"),
             "next_refresh": (now + dt.timedelta(minutes=a.every)).isoformat(timespec="seconds"),
             "refresh_minutes": a.every, "status": status, "leagues": priced,
-            "boards": boards, "potd": potd, "backtest": backtest_summary(), "results": _safe(tracker.summary),
+            "boards": boards, "potd": potd, "potd_record": _safe(LK.potd_record),
+            "backtest": backtest_summary(), "results": _safe(tracker.summary),
             "books_enabled": bool(books.api_key()),
         })
         print(f"{now:%H:%M:%S} priced {sum(len(p['players']) for p in priced)} players, "
