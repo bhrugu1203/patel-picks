@@ -473,6 +473,7 @@ function pickCard(x){
     <div class="conf"><div class="v" style="color:${confColor(x.p)}">${Math.round(x.p*100)}%</div><div class="l">Hit chance</div></div></div>
    <div class="market"><span class="side ${x.side}">${x.side==="over"?"OVER":"UNDER"}</span><span class="txt">${x.line}<small>${esc(x.label)}${lineMove(x)}${roleTag(x)}</small></span>
     <button class="odds add ${inSlip(x)?"on":""}" data-add='${esc(JSON.stringify(slim(x)))}' title="Add to bet slip">${odds(x.price)}<small>${esc(bk(x.book))}</small></button></div>
+   ${pickBooks(x)}
    <div class="stats3">
     <div class="st"><div class="l">Projection</div><div class="v">${x.proj??"–"}</div></div>
     <div class="st"><div class="l">Expected value</div><div class="v">${evtxt(x.ev)}</div></div>
@@ -554,6 +555,26 @@ function parlayCard(pl){
   <div class="payout"><div><div class="lbl">All hit</div><div class="v">${pct(pl.p,1)}</div></div><div><div class="lbl">$10 pays</div><div class="v">$${(10*pl.decimal).toFixed(2)}</div></div><div><div class="lbl">EV</div><div class="v">${evtxt(pl.ev)}</div></div></div>
   <button class="btn pri" data-parlay='${esc(JSON.stringify(pl.legs.map(slim)))}'>Load into bet slip</button></div>`}
 /* every book that offers the whole ticket, best payout first */
+/** Line shopping for one pick: every book's price for this exact bet, best payout first. */
+function bookLadder(x){
+  const seen=new Set(), rows=[];
+  for(const [b,px] of [[x.book,x.price],...Object.entries(x.books||{})]){
+    if(!b||px==null||seen.has(String(b).toLowerCase()))continue;
+    seen.add(String(b).toLowerCase()); rows.push({book:b,price:+px});
+  }
+  return rows.sort((a,b)=>dec(b.price)-dec(a.price));
+}
+function pickBooks(x){
+  const r=bookLadder(x); if(r.length<2)return"";
+  const best=r[0], here=String(best.book).toLowerCase()===String(x.book||"").toLowerCase()||best.price===+x.price;
+  const others=r.filter(o=>o!==best).slice(0,4).map(o=>`${esc(bk(o.book))} ${odds(o.price)}`).join(" · ");
+  if(here)return `<div class="note">Best price of ${r.length} books. Others: ${others}</div>`;
+  const alt={...x,book:best.book,price:best.price};
+  const gain=x.p!=null?Math.round((x.p*dec(best.price)-1)*100):null;
+  return `<div class="note pos" style="font-weight:700">Better at ${esc(bk(best.book))} ${odds(best.price)}${gain!=null?` (EV ${gain>0?"+":""}${gain}%)`:""}
+    <button class="odds add ${inSlip(alt)?"on":""}" style="display:inline-flex;margin-left:6px" data-add='${esc(JSON.stringify(slim(alt)))}' title="Add to bet slip at ${esc(bk(best.book))}">${odds(best.price)}<small>${esc(bk(best.book))}</small></button></div>
+   <div class="note">Others: ${others}</div>`;
+}
 function bookCompare(q){
   if(!q||q.length<2)return "";
   return `<div class="note">Best at <b>${esc(bk(q[0].book))}</b>. Others: ${q.slice(1).map(r=>`${esc(bk(r.book))} ${odds(r.price)}`).join(" · ")}</div>`}
