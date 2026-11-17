@@ -82,3 +82,14 @@ saved to the database, which builds a priced NFL history the backtest can use la
 - MLB total bases is not available in ESPN box scores, so it is not projected.
 - No model guarantees profit. The Model Report tab shows real out-of-sample results, including
   the ones that lost.
+
+## Phone app
+
+The site installs as an app, with its own home-screen icon and full-screen view:
+- **iPhone:** open the site in Safari, tap Share, then Add to Home Screen.
+- **Android / Chrome / Edge:** tap **Get the app** in the header (or the browser's Install option).
+
+The app is the same site, so every update to the board shows up in it. When the phone is offline it opens the
+last board it saw. Files: `web/manifest.webmanifest`, `web/sw.js` (offline copy, always network first),
+`web/pwa.js` (install button and iPhone tip), `web/pwa.css`, `web/icons/`. If you change `sw.js`, bump `VERSION`
+so phones pick up the new copy.
