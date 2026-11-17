@@ -150,11 +150,14 @@ def main(argv=None):
             try:
                 before = _out_set(st.get("injuries"))
                 out = S.price(st, refresh_lines=True, book_rows=book_cache.get(lg))
-                if _out_set(st.get("injuries")) != before:
-                    status[lg] = "injury change: re-projecting"
-                    start_projection(lg)
-                elif time.time() - projected_at.get(lg, 0) >= a.project_every * 60:
-                    start_projection(lg)
+                # a one-shot run (the scheduled board update) exits right after this pass, so a new
+                # projection here would only hold the exit up; the next run projects fresh anyway
+                if not a.once:
+                    if _out_set(st.get("injuries")) != before:
+                        status[lg] = "injury change: re-projecting"
+                        start_projection(lg)
+                    elif time.time() - projected_at.get(lg, 0) >= a.project_every * 60:
+                        start_projection(lg)
                 priced.append(out)
             except Exception:
                 status[lg] = "pricing failed: " + traceback.format_exc(limit=1).strip().splitlines()[-1]
