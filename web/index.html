@@ -420,7 +420,7 @@ function headshot(lg,pid,name,teamId,cls="av"){
   return `<div class="${cls}"><img class="hs" src="${src}" alt="" loading="lazy" onerror="this.outerHTML='<div class=fb>${esc(ini)}</div>'">${m.logo?`<img class="tl" src="${esc(m.logo)}" alt="">`:""}</div>`}
 const legKey=x=>[x.game_id,x.player_id,x.stat,x.side,x.book].join("|");
 const inSlip=x=>slip.some(l=>l.key===legKey(x));
-const slim=x=>({key:legKey(x),league:x.league,game_id:x.game_id,player_id:x.player_id,team_id:x.team_id,player:x.player,team:x.team,opp:x.opp,stat:x.stat,label:x.label,side:x.side,line:x.line,price:x.price,p:x.p,book:x.book});
+const slim=x=>({key:legKey(x),league:x.league,game_id:x.game_id,player_id:x.player_id,team_id:x.team_id,player:x.player,team:x.team,opp:x.opp,stat:x.stat,label:x.label,side:x.side,line:x.line,price:x.price,p:x.p,book:x.book,books:x.books||null});
 const confColor=p=>p>=.62?"var(--good)":p>=.55?"var(--ink)":"var(--ink2)";
 function heat(v,n){if(v==null)return '<span class="muted">–</span>';
   const a=Math.min(.32,Math.abs(v-.5)*.9), col=v>=.5?`rgba(53,208,127,${a})`:`rgba(255,107,107,${a})`;
@@ -538,12 +538,23 @@ function pageProps(){
   </tbody></table></div>${r.length>250?`<p class="note" style="margin-top:10px">Showing the top 250 of ${r.length}. Use the filters to narrow it down.</p>`:""}`}
 
 function parlayCard(pl){
-  return `<div class="panel parlay"><div class="hd"><b>${esc(pl.name)}</b><span class="tag gray">${pl.legs.length} legs</span><span class="odds" style="margin-left:auto">${odds(pl.price)}<small>Parlay</small></span></div>
-  <div class="note">${esc(pl.desc)}</div>
+  return `<div class="panel parlay"><div class="hd"><b>${esc(pl.name)}</b><span class="tag gray">${pl.legs.length} legs</span><span class="odds" style="margin-left:auto">${odds(pl.price)}<small>${pl.book?esc(bk(pl.book)):"Parlay"}</small></span></div>
+  <div class="note">${esc(pl.desc)}</div>${bookCompare(pl.compare)}
   <div class="plegs">${pl.legs.map(l=>`<div class="pleg">${headshot(l.league,l.player_id,l.player)}<div style="min-width:0;flex:1"><b>${esc(l.player)}</b><div class="note"><span class="${l.side==="over"?"pos":"neg"}" style="font-weight:700">${l.side==="over"?"Over":"Under"} ${l.line}</span> ${esc(l.label)}</div></div>
    <div class="r"><b>${pct(l.p)}</b><div class="note">${odds(l.price)}</div></div></div>`).join("")}</div>
   <div class="payout"><div><div class="lbl">All hit</div><div class="v">${pct(pl.p,1)}</div></div><div><div class="lbl">$10 pays</div><div class="v">$${(10*pl.decimal).toFixed(2)}</div></div><div><div class="lbl">EV</div><div class="v">${evtxt(pl.ev)}</div></div></div>
   <button class="btn pri" data-parlay='${esc(JSON.stringify(pl.legs.map(slim)))}'>Load into bet slip</button></div>`}
+/* every book that offers the whole ticket, best payout first */
+function bookCompare(q){
+  if(!q||q.length<2)return "";
+  return `<div class="note">Best at <b>${esc(bk(q[0].book))}</b>. Others: ${q.slice(1).map(r=>`${esc(bk(r.book))} ${odds(r.price)}`).join(" · ")}</div>`}
+/* price a slip at each book that has every leg at the same line */
+function slipQuotes(legs){
+  if(!legs.length)return [];
+  const maps=legs.map(l=>{const m={};Object.entries(l.books||{}).forEach(([b,px])=>{m[b.toLowerCase()]=[b,px]});
+    if(l.price!=null&&l.book&&!m[l.book.toLowerCase()])m[l.book.toLowerCase()]=[l.book,l.price];return m});
+  const common=Object.keys(maps[0]).filter(b=>maps.every(m=>m[b]));
+  return common.map(b=>({book:maps[0][b][0],d:maps.reduce((a,m)=>a*dec(m[b][1]),1)})).sort((a,b)=>b.d-a.d)}
 function pageParlays(){
   const P=(D.boards?.parlays||[]).filter(p=>p.legs.every(inLg));
   return `<div class="ph"><div><h1>Parlays</h1><p>Built from legs in different games so the chances multiply cleanly. Tap any price on the site to build your own.</p></div></div>
@@ -976,17 +987,23 @@ function pageStatPlayer(lg,pid){
 /* ===== slip ===== */
 function renderSlip(openIt){
   const el=$("#slip"); if(openIt!==undefined)el.classList.toggle("open",openIt);
-  const pr=slip.filter(l=>l.price!=null), p=slip.reduce((a,l)=>a*(l.p||0),1), d=pr.reduce((a,l)=>a*dec(l.price),1), stake=+ls("stake","10")||10;
+  const pr=slip.filter(l=>l.price!=null), p=slip.reduce((a,l)=>a*(l.p||0),1), stake=+ls("stake","10")||10;
+  const Q=pr.length===slip.length?slipQuotes(slip):[], mixed=slip.length>1&&pr.length===slip.length&&!Q.length;
+  const d=Q.length?Q[0].d:pr.reduce((a,l)=>a*dec(l.price),1), ev=p*d-1;
+  const kelly=Q.length&&ev>0&&d>1?ev/(d-1)/4:0;
   const same=new Set(slip.map(l=>l.game_id)).size<slip.length;
   el.innerHTML=`<div class="dh"><b style="font-size:16px">Bet slip</b><span class="tag gray">${slip.length}</span><button class="x" data-close>Close</button></div>
   <div class="db">${slip.length?slip.map((l,i)=>`<div class="leg">${headshot(l.league,l.player_id,l.player,l.team_id)}<div style="min-width:0;flex:1"><b>${esc(l.player)}</b>
     <div class="note"><span class="${l.side==="over"?"pos":"neg"}" style="font-weight:700">${l.side==="over"?"Over":"Under"} ${l.line}</span> ${esc(l.label)}</div><div class="note">${esc(bk(l.book))} ${odds(l.price)} · ${pct(l.p)} chance</div></div>
     <button class="rm" data-rm="${i}" aria-label="Remove leg">×</button></div>`).join(""):`<div class="empty">Tap any price on the site to add it here.</div>`}
    ${same?`<div class="notice" style="margin-top:14px"><span>!</span><span>Some legs share a game. They're correlated, so the combined chance is rough and the book's same-game price will differ.</span></div>`:""}
+   ${mixed?`<div class="notice" style="margin-top:14px"><span>!</span><span>No single sportsbook has every one of these legs, and a parlay has to be placed at one book. The odds shown mix books.</span></div>`:""}
    ${slip.length&&pr.length<slip.length?`<div class="notice" style="margin-top:14px"><span>ⓘ</span><span>Legs without a price (NFL without an Odds API key) are left out of the payout.</span></div>`:""}</div>
-  ${slip.length?`<div class="df"><div class="kv"><span>Chance all hit</span><span>${pct(p,1)}</span><span>Odds</span><span>${pr.length?odds(toAm(d)):"–"}</span>
+  ${slip.length?`<div class="df"><div class="kv"><span>Chance all hit</span><span>${pct(p,1)}</span><span>Odds</span><span>${pr.length?odds(toAm(d)):"–"}${Q.length?` <small class="muted">${esc(bk(Q[0].book))}</small>`:""}</span>
    <span>Stake</span><span><input type="number" min="1" value="${stake}" data-stake style="width:90px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit"></span>
-   <span>To win</span><span class="pos">$${(stake*(d-1)).toFixed(2)}</span><span>Expected value</span><span>${pr.length===slip.length?evtxt(p*d-1):"–"}</span></div>
+   <span>To win</span><span class="pos">$${(stake*(d-1)).toFixed(2)}</span><span>Expected value</span><span>${pr.length===slip.length?evtxt(ev):"–"}</span>
+   ${Q.length?`<span>Suggested stake</span><span>${kelly>0?`${(100*Math.min(kelly,.05)).toFixed(1)}% of bankroll`:`Skip, it's not +EV`}</span>`:""}</div>
+   ${Q.length>1?`<div class="note" style="margin-top:10px">${Q.slice(1,5).map(r=>`${esc(bk(r.book))} ${odds(toAm(r.d))}`).join(" · ")}</div>`:""}
    <button class="btn" style="margin-top:14px" data-clear>Clear slip</button></div>`:""}`;
   $("#slipn").textContent=slip.length;
 }
