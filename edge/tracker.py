@@ -33,6 +33,10 @@ def _con():
             con.execute(f"ALTER TABLE picks ADD COLUMN {c} TEXT")
             if c == "src":
                 con.execute("UPDATE picks SET src='best' WHERE src IS NULL")
+    pcols = {r[1] for r in con.execute("PRAGMA table_info(parlays)")}
+    for c, kind in (("book", "TEXT"), ("close_price", "REAL")):  # added later: where the ticket is priced, and its closing price
+        if c not in pcols:
+            con.execute(f"ALTER TABLE parlays ADD COLUMN {c} {kind}")
     for pid, ev, pr in con.execute("SELECT pick_id, ev, p FROM picks WHERE grade IS NULL").fetchall():
         con.execute("UPDATE picks SET grade=? WHERE pick_id=?", (grade_of(ev, pr or 0), pid))
     return con
@@ -76,8 +80,8 @@ def record(boards: dict, priced: list[dict]):
                         (_pid(l), now, l["league"], l["game_id"], l["player_id"], l["player"], l["team"], l["opp"],
                          l["stat"], l["label"], l["side"], l["book"], l["line"], l["price"], l["p"], l.get("ev"), l.get("conf")))
         key = pl["name"] + "|" + ",".join(sorted(legs))
-        con.execute("INSERT OR IGNORE INTO parlays(parlay_id, posted, name, legs, price, p, ev) VALUES(?,?,?,?,?,?,?)",
-                    (key, now, pl["name"], json.dumps(legs), pl["price"], pl["p"], pl["ev"]))
+        con.execute("INSERT OR IGNORE INTO parlays(parlay_id, posted, name, legs, price, p, ev, book) VALUES(?,?,?,?,?,?,?,?)",
+                    (key, now, pl["name"], json.dumps(legs), pl["price"], pl["p"], pl["ev"], pl.get("book")))
     # closing number: keep overwriting while the game is still on the board
     live = {}
     for lg in priced:
@@ -89,8 +93,35 @@ def record(boards: dict, priced: list[dict]):
         o = live.get((row[1], row[2], row[3], row[5]))
         if o and o.get(row[4]) is not None:
             con.execute("UPDATE picks SET close_line=?, close_price=? WHERE pick_id=?", (o["line"], o[row[4]], row[0]))
+    _close_parlays(con)
     con.commit()
     con.close()
+
+
+def _american(dec: float) -> float:
+    return round((dec - 1) * 100) if dec >= 2 else round(-100 / (dec - 1))
+
+
+def parlay_close(legs: list[dict], book: str | None) -> float | None:
+    """Closing price of a whole ticket: every leg's closing price at the ticket's book, on the line we posted.
+    None when any leg moved to a new line, closed at another book, or has no closing price yet."""
+    dec = 1.0
+    for l in legs:
+        if l is None or l.get("close_price") is None or l.get("close_line") != l.get("line"):
+            return None
+        if book and l.get("book") != book:
+            return None
+        dec *= float(1 + X.payout(l["close_price"]))
+    return _american(dec) if legs else None
+
+
+def _close_parlays(con):
+    rows = {r[0]: {"book": r[1], "line": r[2], "close_line": r[3], "close_price": r[4]}
+            for r in con.execute("SELECT pick_id, book, line, close_line, close_price FROM picks")}
+    for pid, legs, book in con.execute("SELECT parlay_id, legs, book FROM parlays WHERE result IS NULL").fetchall():
+        close = parlay_close([rows.get(l) for l in json.loads(legs)], book)
+        if close is not None:
+            con.execute("UPDATE parlays SET close_price=? WHERE parlay_id=?", (close, pid))
 
 
 def grade():
@@ -161,7 +192,11 @@ def summary() -> dict:
     leans = picks[picks["src"] == "lean"] if not picks.empty else picks
     out = {"overall": _rec(best), "plays": _rec(plays), "leans": _rec(leans), "by_league": {}, "by_day": [], "recent": [],
            "by_grade": {}, "by_side": {}, "by_stat": {}, "plays_by_league": {},
-           "parlays": _rec(parl), "parlay_recent": []}
+           "parlays": _parlay_rec(parl), "parlays_by_name": {}, "parlays_by_book": {}, "parlay_recent": []}
+    if not parl.empty:
+        for key, col in (("parlays_by_name", "name"), ("parlays_by_book", "book")):
+            for k, s in parl.dropna(subset=[col]).groupby(col):
+                out[key][k] = _parlay_rec(s)
     if picks.empty:
         return out
     for lg, s in best.groupby("league"):
@@ -178,8 +213,20 @@ def summary() -> dict:
             "close_line", "close_price", "actual", "result", "profit", "grade", "src"]
     out["recent"] = picks[cols].head(200).astype(object).where(picks[cols].head(200).notna(), None).to_dict("records")
     if not parl.empty:
-        pc = ["posted", "name", "legs", "price", "p", "result", "profit"]
+        pc = ["posted", "name", "legs", "book", "price", "close_price", "p", "result", "profit"]
         out["parlay_recent"] = parl[pc].head(60).astype(object).where(parl[pc].head(60).notna(), None).to_dict("records")
+    return out
+
+
+def _parlay_rec(s: pd.DataFrame) -> dict:
+    """Parlay record plus how often the ticket's price beat its closing price at the same book."""
+    out = _rec(s.drop(columns=["close_price"], errors="ignore") if s is not None else s)  # pick-style CLV needs lines
+    if s is None or s.empty or "close_price" not in s.columns:
+        return out
+    c = s.dropna(subset=["close_price", "price"])
+    if len(c):
+        out["clv_beat"] = round(float((X.payout(c["price"]) > X.payout(c["close_price"])).sum()) / len(c), 4)
+        out["clv_n"] = int(len(c))
     return out
 
 

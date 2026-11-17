@@ -700,10 +700,15 @@ function pageResults(){
     <td><span class="tag ${r.result==="win"?"win":r.result==="loss"?"loss":"gray"}">${r.result||"Pending"}</span></td><td class="r">${r.result&&r.result!=="void"&&r.profit!=null?units(r.profit):"–"}</td></tr>`).join("")||`<tr><td colspan="10" class="muted">Nothing logged yet. Plays are added the first time they appear on the site.</td></tr>`}</tbody></table></div>
   ${t==="best"?`<div class="sec"><h2>Parlays</h2></div>${parlayRecord()}`:""}`}
 function parlayRecord(){const R=D.results||{}, pr=R.parlays||{};
-  return `<div class="panel tbl"><table><thead><tr><th>Posted</th><th>Parlay</th><th class="r">Legs</th><th class="r">Odds</th><th>Result</th><th class="r">Units</th></tr></thead><tbody>
-  ${(R.parlay_recent||[]).slice(0,15).map(p=>`<tr><td class="muted">${new Date(p.posted).toLocaleDateString([], {month:"short",day:"numeric"})}</td><td><b>${esc(p.name)}</b></td><td class="r">${JSON.parse(p.legs).length}</td><td class="r">${odds(p.price)}</td>
-   <td><span class="tag ${p.result==="win"?"win":p.result==="loss"?"loss":"gray"}">${p.result||"Pending"}</span></td><td class="r">${p.result?units(p.profit):"–"}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">No parlays logged yet.</td></tr>`}</tbody></table>
-  <div class="pad note" style="border-top:1px solid var(--line)">Record ${pr.wins!=null?`${pr.wins}-${pr.losses}`:"0-0"} · ${units(pr.units??0)} · ${pr.pending||0} pending</div></div>`}
+  const rec=r=>r&&r.wins!=null?`${r.wins}-${r.losses}`:"0-0";
+  const split=(title,o)=>{const ks=Object.keys(o||{}).sort((a,b)=>(o[b].units??0)-(o[a].units??0)); return ks.length?`<div class="panel tbl"><table><thead><tr><th>${title}</th><th class="r">Record</th><th class="r">Units</th><th class="r">ROI</th><th class="r">Beat close</th><th class="r">Pending</th></tr></thead><tbody>
+  ${ks.map(k=>{const r=o[k]; return `<tr><td><b>${esc(k)}</b></td><td class="r">${rec(r)}</td><td class="r">${units(r.units??0)}</td><td class="r">${r.roi!=null?pct(r.roi):"–"}</td><td class="r">${r.clv_beat!=null?pct(r.clv_beat):"–"}</td><td class="r">${r.pending||0}</td></tr>`}).join("")}</tbody></table></div>`:""};
+  return `<div class="panel tbl"><table><thead><tr><th>Posted</th><th>Parlay</th><th class="r">Legs</th><th>Book</th><th class="r">Odds</th><th class="r">Close</th><th>Result</th><th class="r">Units</th></tr></thead><tbody>
+  ${(R.parlay_recent||[]).slice(0,15).map(p=>`<tr><td class="muted">${new Date(p.posted).toLocaleDateString([], {month:"short",day:"numeric"})}</td><td><b>${esc(p.name)}</b></td><td class="r">${JSON.parse(p.legs).length}</td><td class="muted">${p.book?esc(p.book):"–"}</td><td class="r">${odds(p.price)}</td><td class="r ${p.close_price!=null&&p.price!=null?(odds2dec(p.price)>odds2dec(p.close_price)?"pos":"muted"):"muted"}">${p.close_price!=null?odds(p.close_price):"–"}</td>
+   <td><span class="tag ${p.result==="win"?"win":p.result==="loss"?"loss":"gray"}">${p.result||"Pending"}</span></td><td class="r">${p.result?units(p.profit):"–"}</td></tr>`).join("")||`<tr><td colspan="8" class="muted">No parlays logged yet.</td></tr>`}</tbody></table>
+  <div class="pad note" style="border-top:1px solid var(--line)">Record ${rec(pr)} · ${units(pr.units??0)} · ${pr.pending||0} pending${pr.clv_beat!=null?` · beat the closing price on ${pct(pr.clv_beat)} of ${pr.clv_n} tickets`:""}. Close is the whole ticket at the same book just before the games started; green means we posted a better price.</div></div>
+  ${split("By parlay type",R.parlays_by_name)}${split("By sportsbook",R.parlays_by_book)}`}
+function odds2dec(a){return a>0?1+a/100:1+100/-a}
 
 /* ===== charts: single series, accent ink, recessive axes, hover tooltips ===== */
 function lineChart(pts){
