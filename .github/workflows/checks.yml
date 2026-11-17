@@ -1,0 +1,50 @@
+# Quick checks on every pull request, so a change that would break the hourly board update
+# or the website shows up as a red X on the pull request instead of after it is merged.
+# Nothing here downloads data, touches the database or publishes the site.
+name: Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # same as the board update
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Model code compiles and loads
+        run: |
+          python -m compileall -q edge
+          python -c "import edge.ci, edge.live, edge.slate, edge.backtest, edge.stats, edge.tracker, edge.insights, edge.books, edge.ingest"
+
+      - name: Saved calibration and backtest files are valid
+        run: python -c "import json; [json.load(open(f)) for f in ('data/calibration.json', 'data/backtest.json')]"
+
+      - name: Tests
+        run: |
+          shopt -s nullglob
+          for t in tests/test_*.py; do echo "== $t"; python "$t"; done
+
+      - name: Website script has no syntax errors
+        run: |
+          node -e '
+            const html = require("fs").readFileSync("web/index.html", "utf8");
+            const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+            if (!scripts.length) throw new Error("no inline script found in web/index.html");
+            scripts.forEach((js, i) => { try { new Function(js) } catch (e) { console.error("script " + (i + 1) + ": " + e.message); process.exit(1) } });
+            console.log("web/index.html: " + scripts.length + " script(s) parse");
+          '
+          shopt -s nullglob
+          for f in web/*.js; do node --check "$f"; done

@@ -1,0 +1,11 @@
+/* Phone app (installed to the home screen): keep the header and tab bar clear of the notch and home bar. */
+header{padding-top:env(safe-area-inset-top)}
+header .hwrap{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
+.getapp{display:none;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:12.5px;white-space:nowrap}
+.getapp.show{display:flex}
+.apptip{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:50;background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:14px 44px 14px 16px;font-size:14px;line-height:1.4;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.apptip b{color:var(--ink)}
+.apptip button{position:absolute;top:8px;right:8px;width:30px;height:30px;border:0;background:none;color:var(--muted);font-size:20px;line-height:1}
+@media (max-width:900px){header .hwrap{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}}
+@media (max-width:760px){.getapp span{display:none}}
+@media (display-mode:standalone){.getapp{display:none!important}}

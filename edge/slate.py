@@ -567,7 +567,11 @@ def boards(priced: list[dict], top: int = 25) -> dict:
     k = min(len(lo), len(lu), PER_SIDE)
     ln = sorted(lo[:k] + lu[:k], key=lambda x: -x["p"])
     sheet, value, lk = sheet[:top], value[:150], lk[:150]
+    prices = I.book_prices(all_sides)
     for x in sheet + value + lk + ln + overs + unders:
         explain(x)
+        bp = prices.get(I.leg_key(x))
+        if bp and len(bp) > 1:  # every book's price for this exact bet, so the slip can compare them
+            x["books"] = bp
     return {"sheet": sheet, "value": value, "likely": lk, "leans": ln, "overs": overs, "unders": unders, "game_edges": games[:40],
-            "proven": proven, "parlays": I.parlays(sheet, lk)}
+            "proven": proven, "parlays": I.parlays(sheet, lk, prices)}
