@@ -290,6 +290,8 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 .grade.gB{background:var(--panel3);color:var(--ink)} .grade.gC{background:var(--panel2);color:var(--muted)}
 .potd{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;padding:24px 26px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,var(--panel)) 0%,var(--panel) 55%);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
 .potd .pname.big{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.dayhd{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;font-size:15px;font-weight:800;letter-spacing:-.01em} .dayhd .n{color:var(--muted);font-weight:600;font-size:13px}
+.locknote{margin-top:10px;font-size:12.5px;color:var(--muted);font-weight:600}
 .potd-pick{margin-top:8px;font-size:16px;font-weight:600;color:var(--ink2)} .potd-pick .side{font-size:15px;padding:4px 10px}
 .potd .whylist{padding-top:16px}
 .potd-r{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:center}
@@ -379,6 +381,19 @@ const inLg=x=>league==="all"||x.league===league;
 const BOOK={DraftKings:"DK",draftkings:"DK",fanduel:"FD",betmgm:"MGM",caesars:"CZR",espnbet:"ESPN",betrivers:"BR",fanatics:"FAN"};
 const bk=b=>BOOK[b]||b;
 const timeOf=d=>new Date(d).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"});
+/* game days are calendar dates in US Eastern time, so a 10pm Sunday game is a Sunday game everywhere */
+const ET_TZ="America/New_York";
+const etDay=d=>new Date(d).toLocaleDateString("en-CA",{timeZone:ET_TZ});
+const todayET=()=>etDay(Date.now());
+const addDays=(day,n)=>{const t=new Date(day+"T12:00:00Z");t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
+const dayOf=x=>x.game_day||(x.start?etDay(x.start):x.date?etDay(x.date):_G.get(x.game_id)?etDay(_G.get(x.game_id).date):"");
+function dayLabel(d){if(!d)return "Upcoming";
+  const nice=new Date(d+"T12:00:00Z").toLocaleDateString([], {weekday:"long",month:"short",day:"numeric",timeZone:"UTC"}), t=todayET();
+  return d===t?`Today · ${nice}`:d===addDays(t,1)?`Tomorrow · ${nice}`:nice}
+/* split a list into one section per game day, nearest day first, keeping each list's own order */
+function byDay(items){const m=new Map();for(const x of items){const d=dayOf(x);if(!m.has(d))m.set(d,[]);m.get(d).push(x)}
+  return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)}
+const dayHd=(d,n,what)=>`<div class="dayhd">${esc(dayLabel(d))}${n!=null?`<span class="n">${n} ${what||(n===1?"play":"plays")}</span>`:""}</div>`;
 
 /* ===== lookups ===== */
 const L=()=>D?.leagues||[];
@@ -550,7 +565,7 @@ function gameCard(g){
 function pageGames(){
   const gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
   return `<div class="ph"><div><h1>Game center</h1><p>Projected scores, win chances, and a game script for every upcoming game.</p></div></div>
-  ${gs.length?`<div class="gcards">${gs.map(gameCard).join("")}</div>`:`<div class="panel empty">No upcoming games for this sport.</div>`}`}
+  ${gs.length?byDay(gs).map(([d,xs])=>`${dayHd(d,xs.length,xs.length===1?"game":"games")}<div class="gcards">${xs.map(gameCard).join("")}</div>`).join(""):`<div class="panel empty">No upcoming games for this sport.</div>`}`}
 function pageGame(id){
   const g=_G.get(id); if(!g)return `<div class="panel empty">This game is no longer on the board. It may have started.</div>`;
   const sc=g.script||{}, ps=players().filter(p=>p.game_id===id), t=F.gtab||"script";
@@ -833,23 +848,28 @@ function emptyFor(){return league==="mlb"?"MLB is in its offseason. Plays return
 function pageToday(){
   const B=D.boards||{}, o=D.results?.overall||{}, gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const all=sortPicks(allPicks(),"value"), ov=all.filter(x=>x.side==="over"), un=all.filter(x=>x.side==="under");
-  const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg)), top=sheet.find(x=>!roleFlag(x))||all.find(x=>!roleFlag(x))||sheet[0]||all[0];
-  return `<div class="ph"><div><div class="eyebrow">${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"})}</div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1>
+  const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg));
+  /* the play of the day is chosen once per game day on the server and locked; older boards fall back to the live pick */
+  const locked=D.potd?.[league], top=locked||sheet.find(x=>!roleFlag(x))||all.find(x=>!roleFlag(x))||sheet[0]||all[0];
+  const days=byDay(all).slice(0,3);
+  return `<div class="ph"><div><div class="eyebrow">${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric",timeZone:ET_TZ})}</div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1>
    <p>${gs.length} upcoming games · ${all.length} plays · odds refresh every ${D.refresh_minutes} minutes</p></div></div>
   ${notice()}
-  ${top?`<div class="potd panel"><div class="potd-l"><div class="eyebrow">Play of the day</div>
+  ${top?`<div class="potd panel"><div class="potd-l"><div class="eyebrow">Play of the day${dayOf(top)&&dayOf(top)!==todayET()?` · ${esc(dayLabel(dayOf(top)))}`:""}</div>
      <div class="pc" style="margin-top:12px">${headshot(top.league,top.player_id,top.player,top.team_id,"av lg")}<div><a class="pname big" href="#/player/${pk(top.player_id,top.game_id)}">${esc(top.player)}</a>
       <div class="pmeta">${LGN[top.league]} · ${esc(abbr(top.league,top.team_id,top.team))} vs ${esc(abbr(top.league,top.opp_id,top.opp))}</div>
       <div class="potd-pick"><span class="side ${top.side}">${top.side==="over"?"Over":"Under"} ${top.line}</span> ${esc(top.label)}</div></div></div>
-     <ul class="whylist">${(top.why?.pro||[]).slice(0,3).map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+     <ul class="whylist">${(top.why?.pro||[]).slice(0,3).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+     ${locked?`<div class="locknote">${top.started?"Game under way · ":""}Locked ${new Date(top.locked_at).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})}${top.start?` · ${timeOf(top.start)} start`:""}</div>`:""}</div>
     <div class="potd-r"><div class="st"><div class="l">Hit chance</div><div class="v big" style="color:${confColor(top.p)}">${pct(top.p)}</div></div>
      <div class="st"><div class="l">Projection</div><div class="v big">${top.proj}</div></div>
      <div class="st"><div class="l">Grade</div><div class="v">${gradeBadge(top)}</div></div>
-     <div class="st"><div class="l">Odds</div><div class="v">${addBtn(top)}</div></div></div></div>`:""}
-  <div class="kpis" style="margin-top:16px">${kpi("Overs",ov.length,"plays today")}${kpi("Unders",un.length,"plays today")}${kpi("Record",rec(o),o.pending?`${o.pending} pending`:"graded automatically")}
+     <div class="st"><div class="l">Odds</div><div class="v">${top.started?`<span class="odds">${odds(top.price)}<small>${esc(bk(top.book))}</small></span>`:addBtn(top)}</div></div></div></div>`:""}
+  <div class="kpis" style="margin-top:16px">${kpi("Overs",ov.length,"upcoming plays")}${kpi("Unders",un.length,"upcoming plays")}${kpi("Record",rec(o),o.pending?`${o.pending} pending`:"graded automatically")}
    ${kpi("Units",o.units!=null?`<span class="${o.units>=0?"pos":"neg"}">${o.units>=0?"+":""}${o.units.toFixed(2)}</span>`:"0.00",o.roi!=null?`ROI ${(o.roi*100).toFixed(1)}%`:"1 unit per pick")}</div>
-  <div class="sec"><h2>Top overs and unders</h2><a class="more" href="#/picks">All picks →</a></div>
-  <div class="cols2">${pickList("Overs",ov.slice(0,6),OB,emptyFor(),true)}${pickList("Unders",un.slice(0,6),UB,emptyFor(),true)}</div>
+  <div class="sec"><h2>Top overs and unders</h2><span class="sub">By game day</span><a class="more" href="#/picks">All picks →</a></div>
+  ${days.length?days.map(([d,xs])=>`${dayHd(d,xs.length)}<div class="cols2">${pickList("Overs",xs.filter(x=>x.side==="over").slice(0,6),OB,emptyFor(),true)}${pickList("Unders",xs.filter(x=>x.side==="under").slice(0,6),UB,emptyFor(),true)}</div>`).join("")
+    :`<div class="cols2">${pickList("Overs",[],OB,emptyFor(),true)}${pickList("Unders",[],UB,emptyFor(),true)}</div>`}
   ${sheet.length?`<div class="sec"><h2>Best bets</h2><span class="sub">Only plays at value levels that made money in the backtest</span><a class="more" href="#/picks">All best bets →</a></div><div class="cards">${sheet.slice(0,3).map(pickCard).join("")}</div>`:""}
   ${parl.length?`<div class="sec"><h2>Parlays</h2><a class="more" href="#/parlays">All parlays →</a></div><div class="cards">${parl.slice(0,3).map(parlayCard).join("")}</div>`:""}
   ${gs.length?`<div class="sec"><h2>Games</h2><a class="more" href="#/games">Game center →</a></div><div class="gcards">${gs.slice(0,6).map(gameCard).join("")}</div>`:""}`}
@@ -865,8 +885,9 @@ function pageBest(){
   const desc={all:"Every player with a line, on the model's side. At least a 50% chance; priced plays need fair value against the odds.",overs:"Overs only.",unders:"Unders only.",
     best:"The strictest list: only value levels that made money in each sport's backtest. One per player, two per game at most.",value:"Every play with positive expected value, including plus-money longshots under 50%."};
   const list=t==="overs"?all.filter(x=>x.side==="over"):t==="unders"?all.filter(x=>x.side==="under"):all;
-  const body=t==="best"||t==="value"?((t==="best"?best:value).length?`<div class="cards">${(t==="best"?best:value).map(pickCard).join("")}</div>`:`<div class="panel empty">${league==="nfl"?"Best bets need real odds. NFL plays are in All picks until prices are posted.":emptyFor()}</div>`)
-    :pickList(t==="overs"?"Overs":t==="unders"?"Unders":"All picks",list,t==="overs"?OB:t==="unders"?UB:"",emptyFor());
+  const cards=t==="best"?best:value, ttl=t==="overs"?"Overs":t==="unders"?"Unders":"All picks";
+  const body=t==="best"||t==="value"?(cards.length?byDay(cards).map(([d,xs])=>`${dayHd(d,xs.length)}<div class="cards">${xs.map(pickCard).join("")}</div>`).join(""):`<div class="panel empty">${league==="nfl"?"Best bets need real odds. NFL plays are in All picks until prices are posted.":emptyFor()}</div>`)
+    :list.length?byDay(list).map(([d,xs])=>`${dayHd(d)}${pickList(ttl,xs,t==="overs"?OB:t==="unders"?UB:"",emptyFor())}`).join(""):pickList(ttl,list,t==="overs"?OB:t==="unders"?UB:"",emptyFor());
   return `<div class="ph"><div><h1>Picks</h1><p>${desc[t]}</p></div></div>${notice()}
   <div class="tabs">${tabs.map(([k,n,c])=>`<button data-set="best:${k}" class="${t===k?"on":""}">${n}<span class="c">${c}</span></button>`).join("")}</div>
   ${t==="best"||t==="value"?"":`<div class="filters"><label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input data-f="pq" placeholder="Search player or team" value="${esc(F.pq||"")}"></label>

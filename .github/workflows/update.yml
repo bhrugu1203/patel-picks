@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 40
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy_retry.outputs.page_url || steps.deploy_last.outputs.page_url }}
     env:
       GH_TOKEN: ${{ github.token }}
       ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -72,5 +72,25 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
+
+      # GitHub sometimes can't see a just-uploaded Pages artifact yet ("Fetching artifact
+      # metadata failed ... No artifacts named github-pages"), which failed the whole run even
+      # though the board was built. Give it a moment, and retry the publish if it still misses.
+      - name: Let the upload settle
+        run: sleep 10
       - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait before retrying the publish
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 45
+      - id: deploy_retry
+        if: steps.deploy.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait before the last try
+        if: steps.deploy.outcome == 'failure' && steps.deploy_retry.outcome == 'failure'
+        run: sleep 120
+      - id: deploy_last
+        if: steps.deploy.outcome == 'failure' && steps.deploy_retry.outcome == 'failure'
         uses: actions/deploy-pages@v4

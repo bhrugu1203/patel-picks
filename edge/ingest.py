@@ -219,9 +219,15 @@ def upsert_game(con, league: str, ev: dict, summary: dict | None, items: list):
                         [(gid, *p) for p in parse_props(items)])
 
 
-def scoreboard(league: str, day: dt.date) -> list[dict]:
+class FetchError(RuntimeError):
+    """A feed could not be downloaded (as opposed to answering that there is nothing)."""
+
+
+def scoreboard(league: str, day: dt.date, strict: bool = False) -> list[dict]:
     sport = LEAGUES[league][0]
     j = get(f"{SITE}/{sport}/{league}/scoreboard", dates=day.strftime("%Y%m%d"), limit=500)
+    if strict and (not isinstance(j, dict) or "events" not in j):
+        raise FetchError(f"{league} scoreboard for {day} could not be downloaded")
     return (j or {}).get("events") or []
 
 
@@ -310,13 +316,19 @@ def fetch_injuries(league: str) -> dict[str, dict]:
     return out
 
 
-def fetch_slate(league: str, day: dt.date) -> list[dict]:
-    """Upcoming games on `day` with their current lines, props and probable starters."""
+def fetch_slate(league: str, day: dt.date, strict: bool = False) -> list[dict]:
+    """Upcoming games on `day` with their current lines, props and probable starters.
+
+    With strict=True a schedule that cannot be downloaded raises FetchError instead of
+    looking like a day with no games.
+    """
     out = []
-    events = [e for e in scoreboard(league, day)
+    events = [e for e in scoreboard(league, day, strict=strict)
               if e["competitions"][0]["status"]["type"]["state"] == "pre"]
     with ThreadPoolExecutor(WORKERS) as pool:
         results = list(pool.map(lambda e: fetch_game(league, e["id"]), events))
+    # one more try for any game whose details failed, so a blip doesn't strip its lines and props
+    results = [res if res else fetch_game(league, e["id"]) for e, res in zip(events, results)]
     for ev, res in zip(events, results):
         summary, items = res if res else ({}, [])
         comp = ev["competitions"][0]
