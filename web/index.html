@@ -301,6 +301,8 @@ th{font-size:11.5px;padding:13px 16px} td{padding:13px 16px;font-size:14.5px}
 .potd .pname.big{font-size:24px;font-weight:800;letter-spacing:-.02em}
 .dayhd{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;font-size:15px;font-weight:800;letter-spacing:-.01em} .dayhd .n{color:var(--muted);font-weight:600;font-size:13px}
 .locknote{margin-top:10px;font-size:12.5px;color:var(--muted);font-weight:600}
+.sharebtn{margin-top:12px;display:inline-flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink);border-radius:9px;padding:7px 12px;font:600 13px/1 inherit;font-family:inherit;cursor:pointer}
+.sharebtn:hover{border-color:var(--accent)}
 .potd-pick{margin-top:8px;font-size:16px;font-weight:600;color:var(--ink2)} .potd-pick .side{font-size:15px;padding:4px 10px}
 .potd .whylist{padding-top:16px}
 .potd-r{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:center}
@@ -865,12 +867,64 @@ function notice(){
   return D.books_enabled||!lgs.includes("nfl")?"":`<div class="info"><span class="i">i</span>NFL lines are posted before their odds, so NFL plays show the model's side and hit chance with “No odds yet” until prices appear.</div>`}
 function emptyFor(){return league==="mlb"?"MLB is in its offseason. Plays return in spring.":league==="nfl"?"No NFL lines are posted for this direction yet. Sunday lines usually appear midweek.":"No plays clear the bar right now."}
 
+/* "Share as image": draws the play of the day as a 1080x1350 post (Instagram's portrait size) and
+   opens the phone's share sheet, or downloads the picture on a computer. Text only, so no outside
+   images can block the drawing. */
+let shareTop=null;
+function shareBtn(x){return x?`<button class="sharebtn" data-share title="Make a picture of this pick to post"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>Share as image</button>`:""}
+function wrapText(g,text,maxW){const out=[];let line="";for(const w of String(text).split(/\s+/)){const t=line?line+" "+w:w;
+  if(g.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t}if(line)out.push(line);return out}
+function fitFont(g,text,weight,size,maxW,min=40){while(size>min){g.font=`${weight} ${size}px Inter,system-ui,sans-serif`;if(g.measureText(text).width<=maxW)break;size-=4}return size}
+function potdImage(x){
+  const W=1080,H=1350,P=84,c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");if(!g||!g.roundRect)return null;
+  const GREEN="#35d07f",RED="#ff6b6b",INK="#f3f5f8",MUTED="#8b95a3",LINE="#2c343f";
+  const bg=g.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#0f1d16");bg.addColorStop(.55,"#0b0d10");bg.addColorStop(1,"#0b0d10");g.fillStyle=bg;g.fillRect(0,0,W,H);
+  g.textBaseline="alphabetic";
+  const F=(w,sz)=>g.font=`${w} ${sz}px Inter,system-ui,sans-serif`;
+  // brand
+  g.fillStyle=GREEN;g.beginPath();g.roundRect(P,P-6,56,56,14);g.fill();
+  g.strokeStyle="#06210f";g.lineWidth=7;g.lineCap="round";g.lineJoin="round";g.beginPath();g.moveTo(P+12,P+36);g.lineTo(P+24,P+24);g.lineTo(P+32,P+32);g.lineTo(P+44,P+14);g.stroke();
+  F(800,40);g.fillStyle=INK;g.fillText("Patel",P+76,P+36);const pw=g.measureText("Patel ").width;g.fillStyle=GREEN;g.fillText("Picks",P+76+pw,P+36);
+  // title + day
+  const day=dayOf(x), when=day?new Date(day+"T12:00:00Z").toLocaleDateString([], {weekday:"long",month:"long",day:"numeric",timeZone:"UTC"}):"";
+  F(800,30);g.fillStyle=GREEN;g.fillText("PLAY OF THE DAY",P,P+150);
+  F(600,30);g.fillStyle=MUTED;g.fillText(when,P,P+196);
+  // player
+  let y=P+330;const name=String(x.player||"");fitFont(g,name,900,96,W-2*P);g.fillStyle=INK;g.fillText(name,P,y);
+  F(600,34);g.fillStyle=MUTED;y+=62;g.fillText(`${LGN[x.league]||String(x.league||"").toUpperCase()} · ${abbr(x.league,x.team_id,x.team)} vs ${abbr(x.league,x.opp_id,x.opp)}`,P,y);
+  // pick
+  y+=120;const over=x.side==="over", side=`${over?"OVER":"UNDER"} ${x.line}`;F(900,92);const sw=g.measureText(side).width;
+  g.fillStyle=over?"rgba(53,208,127,.16)":"rgba(255,107,107,.15)";g.beginPath();g.roundRect(P-6,y-86,sw+48,116,22);g.fill();
+  g.fillStyle=over?GREEN:RED;g.fillText(side,P+18,y);F(700,48);g.fillStyle=INK;
+  const lab=String(x.label||"");if(P+sw+80+g.measureText(lab).width<W-P)g.fillText(lab,P+sw+80,y-4);else{y+=72;g.fillText(lab,P,y)}
+  // stats
+  y+=96;const st=[["HIT CHANCE",pct(x.p)],["PROJECTION",x.proj!=null?String(x.proj):"–"],x.price!=null?["ODDS",odds(x.price)]:["VS LINE",x.proj!=null?(d=>(d>=0?"+":"")+d.toFixed(1))(over?x.proj-x.line:x.line-x.proj):"–"]];
+  const bw=(W-2*P-2*24)/3;st.forEach(([l,v],i)=>{const bx=P+i*(bw+24);g.fillStyle="#14181d";g.strokeStyle=LINE;g.lineWidth=2;g.beginPath();g.roundRect(bx,y,bw,150,20);g.fill();g.stroke();
+    F(700,22);g.fillStyle=MUTED;g.fillText(l,bx+28,y+50);F(800,58);g.fillStyle=i===0?GREEN:INK;g.fillText(v,bx+28,y+118)});
+  // reasons
+  y+=150+78;F(500,32);g.fillStyle="#c9d0d9";
+  for(const r of (x.why?.pro||[]).slice(0,3)){const ls=wrapText(g,r,W-2*P-40);if(y+ls.length*44>H-200)break;
+    g.fillStyle=GREEN;g.beginPath();g.arc(P+8,y-11,7,0,7);g.fill();g.fillStyle="#c9d0d9";ls.forEach((l,j)=>g.fillText(l,P+40,y+j*44));y+=ls.length*44+22}
+  // footer: record + small print
+  const r=D.potd_record?.[league];F(700,32);g.fillStyle=INK;
+  if(r&&(r.wins+r.losses+r.pushes))g.fillText(`Play of the day record ${r.wins}-${r.losses}${r.pushes?"-"+r.pushes:""}${r.priced?` · ${r.units>=0?"+":""}${(+r.units).toFixed(1)}u`:""}`,P,H-P-58);
+  F(500,24);g.fillStyle=MUTED;g.fillText(`${x.start?"Game "+new Date(x.start).toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:ET_TZ})+" ET · ":""}For entertainment only. 21+. Bet responsibly.`,P,H-P);
+  return c}
+async function sharePotd(){
+  const x=shareTop;if(!x)return;
+  try{await document.fonts?.load?.("900 96px Inter")}catch(e){}
+  const c=potdImage(x), name=`patel-picks-${dayOf(x)||"potd"}.png`;if(!c){alert("This browser can't make the picture. Try Chrome or Safari.");return}
+  const blob=await new Promise(r=>c.toBlob(r,"image/png"));if(!blob)return;
+  const file=new File([blob],name,{type:"image/png"});
+  if(navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:"Patel Picks: play of the day"});return}catch(e){if(e.name==="AbortError")return}}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 function pageToday(){
   const B=D.boards||{}, o=D.results?.overall||{}, gs=games().filter(inLg).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const all=sortPicks(allPicks(),"value"), ov=all.filter(x=>x.side==="over"), un=all.filter(x=>x.side==="under");
   const sheet=(B.sheet||[]).filter(inLg), parl=(B.parlays||[]).filter(p=>p.legs.every(inLg));
   /* the play of the day is chosen once per game day on the server and locked; older boards fall back to the live pick */
   const locked=D.potd?.[league], top=locked||sheet.find(x=>!roleFlag(x))||all.find(x=>!roleFlag(x))||sheet[0]||all[0];
+  shareTop=top;
   const days=byDay(all).slice(0,3);
   return `<div class="ph"><div><div class="eyebrow">${new Date().toLocaleDateString([], {weekday:"long",month:"long",day:"numeric",timeZone:ET_TZ})}</div><h1>${league==="all"?"Today's board":LGN[league]+" board"}</h1>
    <p>${gs.length} upcoming games · ${all.length} plays · odds refresh every ${D.refresh_minutes} minutes</p></div></div>
@@ -880,6 +934,7 @@ function pageToday(){
       <div class="pmeta">${LGN[top.league]} · ${esc(abbr(top.league,top.team_id,top.team))} vs ${esc(abbr(top.league,top.opp_id,top.opp))}</div>
       <div class="potd-pick"><span class="side ${top.side}">${top.side==="over"?"Over":"Under"} ${top.line}</span> ${esc(top.label)}</div></div></div>
      <ul class="whylist">${(top.why?.pro||[]).slice(0,3).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+     ${shareBtn(top)}
      ${locked?`<div class="locknote">${top.started?"Game under way · ":""}Locked ${new Date(top.locked_at).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})}${top.start?` · ${timeOf(top.start)} start`:""}</div>`:""}</div>
     <div class="potd-r"><div class="st"><div class="l">Hit chance</div><div class="v big" style="color:${confColor(top.p)}">${pct(top.p)}</div></div>
      <div class="st"><div class="l">Projection</div><div class="v big">${top.proj}</div></div>
@@ -1061,6 +1116,7 @@ document.addEventListener("click",e=>{
   if(c("[data-set]")){const [k,v]=c("[data-set]").dataset.set.split(":");F[k]=v;render();return}
   if(c("th[data-s]")){const [pg,k]=c("th[data-s]").dataset.s.split(":");sort[pg]=sort[pg]==="-"+k?k:"-"+k;render();return}
   if(c("[data-go]")&&!c("a,button")){location.hash=c("[data-go]").dataset.go;return}
+  if(c("[data-share]")){e.preventDefault();sharePotd();return}
   if(c("#slipbtn")){renderSlip(true);return}
   if(c("[data-close]")){renderSlip(false);return}
   if(c("[data-reprice]")){e.preventDefault();const mv=slipMoves();slip.forEach((l,i)=>{if(mv[i]){l.price=mv[i].now;if(mv[i].p!=null)l.p=mv[i].p}});saveSlip();priceAlerts();return}
