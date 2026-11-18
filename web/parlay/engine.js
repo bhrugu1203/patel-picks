@@ -409,12 +409,20 @@ export const placeBy = (legs) => {
 };
 
 // ---------------------------------------------------------------- leg status + track record
+/** Box scores in the slate are filed by the game's UTC date, so an 8 PM ET tip-off on Nov 17 is logged
+ *  as Nov 18. Look a leg up by the UTC date of its own start time, never the local date, or tonight's
+ *  leg picks up last night's game. */
+export const logDay = (gameDate) => new Date(gameDate).toISOString().slice(0, 10);
+const started = (l, now) => !l.gameDate || new Date(l.gameDate) <= now;
+
 export function legState(l, slate, now) {
+  const gd = l.gameDate && new Date(l.gameDate);
+  if (gd && gd > now) return "pending"; // nothing can be settled before the game starts
   const g = slate.graded[`${l.player}|${l.label}|${l.side}|${l.line}`];
   if (g) return g === "win" ? "won" : g === "loss" ? "lost" : "push";
-  const gd = l.gameDate && new Date(l.gameDate), v = gd && slate.logs[`${l.playerId}|${l.stat}`]?.[dayKey(gd)];
+  const v = gd && slate.logs[`${l.playerId}|${l.stat}`]?.[logDay(gd)];
   if (v != null) return v === l.line ? "push" : (l.side === "over" ? v > l.line : v < l.line) ? "won" : "lost";
-  if (gd && gd < now) return now - gd < 4 * 3600000 ? "live" : "final";
+  if (gd) return now - gd < 4 * 3600000 ? "live" : "final";
   return "pending";
 }
 export function parlayState(legs, slate, now) {
@@ -426,9 +434,10 @@ export function parlayState(legs, slate, now) {
 }
 
 export function legResult(l, slate, now, voidAfter = 36 * 3600000) {
+  if (!started(l, now)) return null;
   const g = slate.graded[`${l.player}|${l.label}|${l.side}|${l.line}`];
   if (g) return g === "void" ? "push" : g;
-  const v = l.gameDay && slate.logs[`${l.playerId}|${l.stat}`]?.[l.gameDay];
+  const day = l.gameDate ? logDay(l.gameDate) : l.gameDay, v = day && slate.logs[`${l.playerId}|${l.stat}`]?.[day];
   if (v != null) return v === l.line ? "push" : (l.side === "over" ? v > l.line : v < l.line) ? "win" : "loss";
   if (l.gameDate && now - new Date(l.gameDate) > voidAfter) return "push";
   return null;
@@ -441,8 +450,11 @@ export function paysPerDollar(legs) {
 }
 /** fills in leg results and, once decided, the outcome; returns true if anything changed */
 export function gradeSaved(p, slate, now) {
-  if (p.outcome) return false;
   let changed = false;
+  // undo results given before a leg's game had started (an older version graded tonight's legs from last night)
+  for (const l of p.legs) if (l.result && !started(l, now)) { delete l.result; changed = true; }
+  if (changed && p.outcome) { delete p.outcome; delete p.payout; }
+  if (p.outcome) return false;
   for (const l of p.legs) if (!l.result) { const r = legResult(l, slate, now); if (r) { l.result = r; changed = true; } }
   if (p.legs.some((l) => l.result === "loss")) { p.outcome = "lost"; p.payout = 0; return true; }
   if (!p.legs.every((l) => l.result)) return changed;
@@ -451,7 +463,7 @@ export function gradeSaved(p, slate, now) {
   return true;
 }
 export const savedLeg = (l) => ({ player: l.player, playerId: l.playerId, stat: l.stat, label: l.label, side: l.side,
-  line: l.line, p: l.p, gameDay: l.gameDate ? dayKey(new Date(l.gameDate)) : null, gameDate: l.gameDate, price: l.price ?? null, cost: l.cost ?? null });
+  line: l.line, p: l.p, gameDay: l.gameDate ? logDay(l.gameDate) : null, gameDate: l.gameDate, price: l.price ?? null, cost: l.cost ?? null });
 
 export function recordStats(list, stake = 10) {
   const s = { decided: 0, won: 0, pushed: 0, pending: 0, predictedSum: 0, staked: 0, returned: 0 };

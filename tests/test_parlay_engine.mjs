@@ -49,6 +49,20 @@ check(E.gradeSaved(saved, slate, now) && saved.outcome === "won", "graded from t
 const st = E.recordStats([saved, { outcome: "lost", predicted: 0.5, decimal: 2, payout: 0 }]);
 check(st.won === 1 && st.decided === 2 && Math.abs(st.profit - (10 * E.decimalOdds(-110) - 20)) < 1e-9, "record stats");
 
+// tonight's 8 PM ET game (01:00Z next day) must not pick up last night's box score, which is filed under
+// today's UTC date (the Daniss Jenkins NO 8+ assists leg showed HIT before he played)
+{
+  const lg = { player: "J", playerId: "j", stat: "ast", label: "Assists", side: "under", line: 7.5, gameDate: new Date("2026-11-19T01:00:00Z") };
+  const sl = { graded: {}, logs: { "j|ast": { "2026-11-18": 5 } } };
+  const before = new Date("2026-11-18T23:00:00Z"), after = new Date("2026-11-19T06:00:00Z");
+  check(E.legState(lg, sl, before) === "pending", "no result before tip-off");
+  check(E.legState(lg, sl, after) === "final", "last night's log is not used for tonight");
+  sl.logs["j|ast"]["2026-11-19"] = 9;
+  check(E.legState(lg, sl, after) === "lost", "tonight's log (UTC date of tip-off) grades it");
+  const bad = { legs: [{ ...lg, result: "win" }], outcome: "won", payout: 2, predicted: 0.6, decimal: 2 };
+  check(E.gradeSaved(bad, sl, before) && !bad.outcome && !bad.legs[0].result, "early grade is undone");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 if (typeof process !== "undefined") process.exit(fail ? 1 : 0);
 export const result = { pass, fail };

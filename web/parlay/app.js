@@ -90,7 +90,7 @@ function syncRecord() {
       if (!same && !(first && first <= S.now) && !old.legs.some((l) => l.result)) { S.record[j] = p; changed = true; }
     });
   }
-  for (const p of S.record) if (!p.outcome && E.gradeSaved(p, S.slate, S.now)) changed = true;
+  for (const p of S.record) if (E.gradeSaved(p, S.slate, S.now)) changed = true;
   if (changed) {
     const yearAgo = S.now - 365 * 864e5;
     S.record = S.record.filter((p) => new Date(p.lockedAt) > yearAgo);
