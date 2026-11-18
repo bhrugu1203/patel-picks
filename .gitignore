@@ -11,3 +11,4 @@ data/*
 web/slate.json
 web/stats.json
 .DS_Store
+web/kalshi.json

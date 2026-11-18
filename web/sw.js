@@ -1,7 +1,7 @@
 // Patel Picks offline support. The board (slate.json, stats.json) and the page always come from
 // the network first, so the app is never staler than the website; the saved copy is only used
 // when the phone is offline, so the last board still opens.
-const VERSION = "pp-v1";
+const VERSION = "pp-v2";
 const SHELL = ["./", "pwa.js", "pwa.css", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -11,7 +11,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("pp-") && k !== VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -34,6 +34,8 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return; // fonts, headshots: the browser's own cache handles them
+  // the Parlays app (parlay/) has its own service worker; never save its pages as this app's page
+  if (url.pathname.startsWith(new URL("parlay/", self.registration.scope).pathname)) return;
   // every page load is the same single-page app, so keep one copy of it under "./"
   if (req.mode === "navigate") return e.respondWith(networkFirst(req, new URL("./", self.registration.scope).href));
   e.respondWith(networkFirst(req));
