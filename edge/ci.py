@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime as dt
 import os
 
-from . import ingest, live, stats, tracker
+from . import ingest, kalshi, live, stats, tracker
 
 LEAGUES = ["nfl", "nba", "nhl", "mlb"]
 
@@ -29,6 +29,10 @@ def main():
     stats.write()
     every = os.environ.get("REFRESH_MINUTES", "30")
     live.main(["--once", "--every", every, "--leagues", ",".join(LEAGUES)])
+    try:
+        kalshi.write()  # prices for the Parlays web app; Kalshi blocks browsers, so the board saves them
+    except Exception as e:
+        print("kalshi update failed:", e, flush=True)
 
 
 if __name__ == "__main__":

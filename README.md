@@ -26,6 +26,16 @@ Actions cache, with a daily backup on the `db` release. To use real sportsbook p
 add `ODDS_API_KEY` under Settings → Secrets and variables → Actions. Run an update by hand from
 the Actions tab (Update board → Run workflow).
 
+## Parlays app (phones)
+
+`web/parlay/` is an installable web app with the daily **SAFE / SOLID / BOLD** parlays for **Kalshi** and
+**sportsbooks**, today and tomorrow, mixed or NBA only, in American, decimal, fractional or implied odds.
+Open https://bhrugu1203.github.io/patel-picks/parlay/ on a phone; on iPhone tap Share → Add to Home Screen.
+It is a port of the macOS parlay popup's math (`web/parlay/engine.js`, checked by
+`node tests/test_parlay_engine.mjs`), reads `slate.json` and `kalshi.json` from this site, locks today's
+parlays at 11 AM and keeps a track record on the phone. Kalshi blocks browser requests, so each board
+update saves its prop prices to `web/kalshi.json` (`edge/kalshi.py`).
+
 ## How the board stays steady
 
 - **Game days.** Every pick, game and play of the day belongs to the calendar date its game is

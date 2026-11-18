@@ -567,6 +567,7 @@ function slipQuotes(legs){
 function pageParlays(){
   const P=(D.boards?.parlays||[]).filter(p=>p.legs.every(inLg));
   return `<div class="ph"><div><h1>Parlays</h1><p>Built from legs in different games so the chances multiply cleanly. Tap any price on the site to build your own.</p></div></div>
+  <div class="notice"><span>📱</span><span>Daily SAFE / SOLID / BOLD parlays for Kalshi and sportsbooks, in your pick of odds format: <a href="parlay/">open the Parlays app</a> (on iPhone: Share → Add to Home Screen).</span></div>
   <div class="notice"><span>ⓘ</span><span>A parlay is only +EV when its legs are. Every added leg stacks another layer of the book's margin. Same-game legs are correlated and books reprice them, so the slip flags them.</span></div>
   ${P.length?`<div class="cards">${P.map(parlayCard).join("")}</div>`:`<div class="panel empty">Not enough independent picks on the board yet.</div>`}
   <div class="sec"><h2>Parlay record</h2></div>${parlayRecord()}`}

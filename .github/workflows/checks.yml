@@ -27,7 +27,7 @@ jobs:
       - name: Model code compiles and loads
         run: |
           python -m compileall -q edge
-          python -c "import edge.ci, edge.live, edge.slate, edge.backtest, edge.stats, edge.tracker, edge.insights, edge.books, edge.ingest"
+          python -c "import edge.ci, edge.live, edge.slate, edge.backtest, edge.stats, edge.tracker, edge.insights, edge.books, edge.ingest, edge.kalshi"
 
       - name: Saved calibration and backtest files are valid
         run: python -c "import json; [json.load(open(f)) for f in ('data/calibration.json', 'data/backtest.json')]"
@@ -47,4 +47,7 @@ jobs:
             console.log("web/index.html: " + scripts.length + " script(s) parse");
           '
           shopt -s nullglob
-          for f in web/*.js; do node --check "$f"; done
+          for f in web/*.js web/parlay/*.js; do node --check "$f"; done
+
+      - name: Parlays web app math
+        run: node tests/test_parlay_engine.mjs
