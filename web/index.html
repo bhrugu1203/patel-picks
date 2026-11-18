@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="pwa.css">
 <script src="pwa.js" defer></script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0b0d'/%3E%3Cpath d='M14 44l14-14 9 9 14-18' fill='none' stroke='%2310b981' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0b0d'/%3E%3Cpath d='M22 50V14h14a11 11 0 0 1 0 22H22' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='46' cy='47' r='5.5' fill='%2310b981'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -456,19 +456,53 @@ footer.site{display:block;max-width:none;margin:56px 0 0;padding:0;border-top:1p
 }
 @media (max-width:1440px){.live{display:none}}
 @media (max-width:1180px){.gsearch input{width:110px}nav.main a{padding:0 9px}.hwrap{gap:20px}}
+/* ===== v6: product polish ===== */
+.brand .mk{background:var(--ink);color:var(--bg)} .brand .mk svg{width:17px;height:17px}
+.sbrow{max-width:1360px;margin:0 auto;display:flex;align-items:center;gap:16px;padding-right:24px}
+.sbrow .sbwrap{flex:1;min-width:0;max-width:none;margin:0}
+.sbrow .live{display:flex!important;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:900px){.sbrow{padding-right:14px}.sbrow .live{display:none!important}}
+/* one stat strip instead of four boxes */
+.kpis{gap:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.kpis>.kpi{border:0;border-radius:0;box-shadow:none;background:none;padding:18px 22px}
+.kpis>.kpi+.kpi{border-left:1px solid var(--line)}
+.kpi .lbl{font-size:11px}
+.kpi .v{font-size:28px;margin-top:6px}
+@media (max-width:900px){.kpis>.kpi{padding:14px 16px}.kpis>.kpi:nth-child(odd){border-left:0}.kpis>.kpi:nth-child(n+3){border-top:1px solid var(--line)}.kpi .v{font-size:24px}}
+/* play of the day: player left, numbers right behind a divider */
+.potd{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:0;padding:0}
+.potd-l{padding:24px 28px}
+.potd-r{padding:24px 28px;border-left:1px solid var(--line);gap:22px 28px;align-content:center;background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+.potd-r .st .l{font-size:11px;margin-bottom:4px}
+@media (max-width:760px){.potd{grid-template-columns:1fr}.potd-l{padding:20px}.potd-r{border-left:0;border-top:1px solid var(--line);padding:18px 20px;grid-template-columns:1fr 1fr}.sec .sub{display:none}.sec h2{font-size:18px}}
+/* list headers: colored dot instead of a repeated OVER/UNDER badge */
+.listhd .badge{display:none}
+.listhd h3{display:flex;align-items:center;gap:9px;font-size:16px}
+.listhd:has(.badge.over) h3::before,.listhd:has(.badge.under) h3::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good)}
+.listhd:has(.badge.under) h3::before{background:var(--bad)}
+.phead{font-size:10.5px;letter-spacing:.07em;background:var(--panel)}
+.prow{transition:background .12s}
+.sec{margin-top:44px}
+.sec h2{font-size:19px}
+.sec .sub{font-size:13.5px}
+.dayhd{font-size:14px;font-weight:650}
+/* calmer secondary chips */
+.tag.q{background:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn) 45%,transparent)}
+.notice,.info{font-size:13px}
+.side.over,.side.under{white-space:nowrap;display:inline-block}
 </style>
 </head>
 <body>
 <header><div class="hwrap">
-  <a class="brand" href="#/" aria-label="Patel Picks home"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel Picks</span></a>
+  <a class="brand" href="#/" aria-label="Patel Picks home"><span class="mk"><svg viewBox="0 0 24 24" fill="none"><path d="M7.5 19.5v-15h5.25a4.5 4.5 0 0 1 0 9H7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="17" cy="18" r="2.1" fill="#10b981"/></svg></span><span>Patel Picks</span></a>
   <nav class="main" id="nav"></nav>
-  <div class="hright"><label class="gsearch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="gq" placeholder="Find a player" autocomplete="off"></label><span class="live" id="live"></span>
+  <div class="hright"><label class="gsearch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="gq" placeholder="Find a player" autocomplete="off"></label>
     <button class="icon-btn" id="theme" aria-label="Toggle light and dark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div>
 </div></header>
-<div class="sub-bar"><div class="sbwrap" id="sports"></div></div>
+<div class="sub-bar"><div class="sbrow"><div class="sbwrap" id="sports"></div><span class="live" id="live"></span></div></div>
 <main id="main"></main>
 <footer class="site"><div class="fwrap">
-  <div><a class="brand" href="#/"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel Picks</span></a><p>Player prop projections for the NFL, NBA, NHL and MLB. Every pick comes with its hit chance, a grade and the numbers behind it, updated every 30 minutes.</p></div>
+  <div><a class="brand" href="#/"><span class="mk"><svg viewBox="0 0 24 24" fill="none"><path d="M7.5 19.5v-15h5.25a4.5 4.5 0 0 1 0 9H7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="17" cy="18" r="2.1" fill="#10b981"/></svg></span><span>Patel Picks</span></a><p>Player prop projections for the NFL, NBA, NHL and MLB. Every pick comes with its hit chance, a grade and the numbers behind it, updated every 30 minutes.</p></div>
   <div class="fcol"><h4>Picks</h4><a href="#/picks">Top picks</a><a href="#/props">All props</a><a href="#/parlays">Parlays</a><a href="parlay/">Parlays app</a></div>
   <div class="fcol"><h4>Research</h4><a href="#/games">Games</a><a href="#/teams">Teams</a><a href="#/players">Players</a></div>
   <div class="fcol"><h4>Company</h4><a href="#/results">Results</a><a href="#/model">How the model works</a></div>
