@@ -8,7 +8,7 @@
 <meta property="og:title" content="Patel Picks">
 <meta property="og:description" content="Player prop picks for every NFL, NBA, NHL and MLB game, with the stats behind each one.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" content="#0a0b0d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="pwa.css">
 <script src="pwa.js" defer></script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2335d07f'/%3E%3Cpath d='M14 44l14-14 9 9 14-18' fill='none' stroke='%230b0d10' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0b0d'/%3E%3Cpath d='M14 44l14-14 9 9 14-18' fill='none' stroke='%2310b981' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -355,18 +355,125 @@ tr.xdet .detail{margin-top:0}
   .slipbtn{bottom:calc(78px + env(safe-area-inset-bottom));right:14px}
   footer.site{padding-bottom:90px}
 }
+
+/* ===== v5: professional theme (one accent, calmer type, flatter surfaces) ===== */
+:root,:root[data-theme="dark"]{
+  --bg:#0a0b0d;--bg2:#0d0f12;--panel:#111317;--panel2:#16191e;--panel3:#1c2026;--line:#1f242b;--line2:#2a3038;
+  --ink:#eef0f3;--ink2:#aab2bd;--muted:#7a838f;
+  --accent:#10b981;--accent2:#059669;--accent-ink:#ffffff;--accent-soft:rgba(16,185,129,.12);
+  --good:#10b981;--good-soft:rgba(16,185,129,.12);--bad:#ef4444;--bad-soft:rgba(239,68,68,.12);
+  --warn:#f59e0b;--warn-soft:rgba(245,158,11,.12);--gold:#eab308;
+  --shadow:none;
+}
+:root[data-theme="light"]{
+  --bg:#f7f8fa;--bg2:#eff1f4;--panel:#ffffff;--panel2:#f7f8fa;--panel3:#eef0f3;--line:#e6e8ec;--line2:#d9dce2;
+  --ink:#0f1115;--ink2:#3f4651;--muted:#6b7380;
+  --accent:#059669;--accent2:#047857;--accent-ink:#ffffff;--accent-soft:rgba(5,150,105,.09);
+  --good:#059669;--good-soft:rgba(5,150,105,.09);--bad:#dc2626;--bad-soft:rgba(220,38,38,.08);
+  --warn:#b45309;--warn-soft:rgba(180,83,9,.09);--gold:#a16207;
+  --shadow:0 1px 2px rgba(15,17,21,.04);
+}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14.5px;letter-spacing:-.006em;font-feature-settings:"tnum" 1,"cv11" 1,"ss01" 1}
+::selection{background:var(--accent-soft)}
+/* header */
+header{background:color-mix(in srgb,var(--bg) 88%,transparent);border-bottom-color:var(--line)}
+.hwrap{height:60px;gap:32px}
+.brand{font-size:16.5px;font-weight:700;letter-spacing:-.02em;gap:10px}
+.brand .mk{width:28px;height:28px;border-radius:7px;background:var(--ink);color:var(--bg)}
+.brand .mk svg{width:15px;height:15px}
+.brand em{color:inherit;font-weight:700}
+.brand .bt{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line2);border-radius:5px;padding:2px 6px;margin-left:2px}
+nav.main a{font-size:14px;font-weight:500;padding:0 12px;color:var(--muted)}
+nav.main a.on{color:var(--ink);font-weight:600;border-bottom-width:2px;border-color:var(--ink)}
+.icon-btn{width:36px;height:36px;border-radius:8px}
+.gsearch{height:36px;border-radius:8px;background:var(--panel2)}
+.live{font-size:12px}
+.dot{width:6px;height:6px}
+/* sport bar: quiet filter tabs instead of pills */
+.sub-bar{background:var(--bg)}
+.sbwrap{padding:0 24px;gap:4px;height:46px}
+.sport{border:0;background:none;border-radius:7px;padding:6px 12px;font-size:13.5px;font-weight:500;color:var(--muted)}
+.sport:hover{color:var(--ink);background:var(--panel2)}
+.sport .c{font-size:11.5px;font-weight:500}
+.sport.on{background:var(--panel3);color:var(--ink);font-weight:600;border:0} .sport.on .c{color:var(--muted);opacity:1}
+/* page heads + sections */
+main{padding-top:32px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--muted)}
+.ph h1{font-size:30px;font-weight:700;letter-spacing:-.03em}
+.ph p{font-size:14.5px}
+.sec h2,.listhd h3{font-weight:650;letter-spacing:-.02em;font-size:18px}
+.sec .more{font-weight:500}
+.lbl,th,.phead,.st .l,.conf .l,.kpi .lbl{font-weight:600;letter-spacing:.06em}
+/* surfaces */
+.panel{border-radius:12px;box-shadow:var(--shadow)}
+.market,.payout,.hit,.dhb{border-radius:9px}
+.kpi .v,.sbox .v{font-weight:700;letter-spacing:-.03em}
+.conf .v,.potd-r .v.big,.price .v{font-weight:700}
+.pname{font-weight:600} .potd .pname.big{font-weight:700}
+.phero h1,.thero h1,.hero .t .s{font-weight:700}
+.prow .ln,.prow .ch,.hitc b{font-weight:700}
+.market .txt{font-weight:600}
+.odds{border-radius:7px;font-weight:700;background:var(--panel2)}
+.odds.add:hover{border-color:var(--ink2)}
+.side.over,.side.under,.market .side{font-weight:700;border-radius:5px}
+.grade{border-radius:6px;font-weight:700}
+.tag{border-radius:5px;font-weight:600}
+.chip{border-radius:8px;font-weight:500}
+.chip.on{background:var(--panel3);border-color:var(--line2);color:var(--ink);font-weight:600}
+.seg{border-radius:9px} .seg button{border-radius:6px;font-weight:500} .seg button.on{font-weight:600;box-shadow:0 0 0 1px var(--line2)}
+.tabs button{font-weight:500} .tabs button.on{font-weight:600;border-color:var(--ink)}
+.search,select{border-radius:8px}
+.potd{background:var(--panel);border-color:var(--line);position:relative;overflow:hidden}
+.potd::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.potd .eyebrow{color:var(--accent)}
+.notice{border-radius:10px;border-left-width:3px}
+.info .i{font-style:normal}
+/* bet slip */
+.slipbtn{border-radius:10px;padding:11px 16px;font-weight:600;background:var(--ink);color:var(--bg);box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.slipbtn b{background:var(--accent);color:#fff}
+.btn{border-radius:8px;font-weight:600}
+.btn.pri{background:var(--ink);color:var(--bg)}
+.drawer{background:var(--panel)}
+/* footer */
+footer.site{display:block;max-width:none;margin:56px 0 0;padding:0;border-top:1px solid var(--line);background:var(--bg2)}
+.fwrap{max-width:1360px;margin:0 auto;padding:40px 24px 28px;display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:32px}
+.fwrap .brand{margin-bottom:12px}
+.fwrap p{margin:0;max-width:360px;line-height:1.6;color:var(--muted);font-size:13px}
+.fcol h4{margin:0 0 12px;font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+.fcol a{display:block;padding:4px 0;color:var(--muted);font-size:13.5px}
+.fcol a:hover{color:var(--ink)}
+.flegal{max-width:1360px;margin:0 auto;padding:18px 24px 88px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;color:var(--muted);font-size:12px;line-height:1.55}
+.flegal .rg{display:flex;align-items:center;gap:8px}
+.flegal .age{display:inline-grid;place-items:center;height:20px;padding:0 6px;border:1px solid var(--line2);border-radius:5px;font-weight:700;font-size:11px;color:var(--ink2)}
+@media (max-width:900px){.fwrap{grid-template-columns:1fr 1fr;padding:32px 14px 20px}.fwrap>div:first-child{grid-column:1/-1}.flegal{padding:16px 14px 24px}.sbwrap{padding:0 14px}}
+@media (max-width:760px){
+  footer.site{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+  .tabbar{background:color-mix(in srgb,var(--bg) 94%,transparent)}
+  .tabbar a,.tabbar button{font-weight:500;font-size:10.5px}
+  .tabbar .on{color:var(--ink);font-weight:600}
+  .tabbar svg{width:21px;height:21px;stroke-width:1.8}
+  .ph h1{font-size:26px}
+}
+@media (max-width:1440px){.live{display:none}}
+@media (max-width:1180px){.gsearch input{width:110px}nav.main a{padding:0 9px}.hwrap{gap:20px}}
 </style>
 </head>
 <body>
 <header><div class="hwrap">
-  <a class="brand" href="#/"><span class="mk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel <em>Picks</em></span></a>
+  <a class="brand" href="#/" aria-label="Patel Picks home"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel Picks</span></a>
   <nav class="main" id="nav"></nav>
   <div class="hright"><label class="gsearch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="gq" placeholder="Find a player" autocomplete="off"></label><span class="live" id="live"></span>
     <button class="icon-btn" id="theme" aria-label="Toggle light and dark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div>
 </div></header>
 <div class="sub-bar"><div class="sbwrap" id="sports"></div></div>
 <main id="main"></main>
-<footer class="site"><span>Patel Picks · model projections for entertainment and research. Odds and lines can change at any time; always check your sportsbook.</span><span>21+ · Gambling problem? Call 1-800-GAMBLER</span></footer>
+<footer class="site"><div class="fwrap">
+  <div><a class="brand" href="#/"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/></svg></span><span>Patel Picks</span></a><p>Player prop projections for the NFL, NBA, NHL and MLB. Every pick comes with its hit chance, a grade and the numbers behind it, updated every 30 minutes.</p></div>
+  <div class="fcol"><h4>Picks</h4><a href="#/picks">Top picks</a><a href="#/props">All props</a><a href="#/parlays">Parlays</a><a href="parlay/">Parlays app</a></div>
+  <div class="fcol"><h4>Research</h4><a href="#/games">Games</a><a href="#/teams">Teams</a><a href="#/players">Players</a></div>
+  <div class="fcol"><h4>Company</h4><a href="#/results">Results</a><a href="#/model">How the model works</a></div>
+</div>
+<div class="flegal"><span>© 2026 Patel Picks. Model projections for entertainment and research, not betting advice. Odds and lines change; confirm with your sportsbook before placing a bet.</span><span class="rg"><span class="age">21+</span>Gambling problem? Call 1-800-GAMBLER</span></div></footer>
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav><div class="moresheet" id="more"></div>
 <button class="slipbtn" id="slipbtn">Bet slip <b id="slipn">0</b></button>
 <aside class="drawer" id="slip" aria-label="Bet slip"></aside>

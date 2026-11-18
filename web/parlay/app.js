@@ -304,7 +304,8 @@ function render() {
   if (html != null && html !== lastHTML) { $("main").innerHTML = html; lastHTML = html; }
   $("foot").innerHTML = S.slate
     ? `Board updated ${esc(ago(S.slate.generated))}${S.kalshi ? ` · Kalshi prices ${esc(ago(new Date(S.kalshi.generated)))}` : ""}<br>
-       Kalshi combo prices are estimates; check the real price before you bet. Not a guarantee. 21+<br><a href="../">All Patel Picks →</a>`
+       Kalshi combo prices are estimates; check the real price before you bet. Model projections, not betting advice.<br>
+       <span class="rg"><span class="age">21+</span>Gambling problem? Call 1-800-GAMBLER</span><br><a href="../">© 2026 Patel Picks · Back to the full board →</a>`
     : "";
 }
 
